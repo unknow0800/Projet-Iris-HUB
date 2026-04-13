@@ -1,0 +1,58 @@
+# ══════════════════════════════════════════════════════
+# deploy.yml — Déploiement automatique sur GitHub Pages
+#
+# Ce workflow se déclenche automatiquement à chaque push
+# sur la branche main et déploie le site sur GitHub Pages.
+#
+# Pour l'activer :
+#   1. Va dans Settings → Pages de ton repo GitHub
+#   2. Source : "GitHub Actions"
+#   3. Pousse un commit sur main → déploiement automatique !
+# ══════════════════════════════════════════════════════
+
+name: Déployer Iris Paris Hub sur GitHub Pages
+
+on:
+  # Se déclenche à chaque push sur main
+  push:
+    branches: ["main"]
+  # Permet de lancer manuellement depuis l'onglet Actions
+  workflow_dispatch:
+
+# Permissions nécessaires pour déployer sur Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Un seul déploiement à la fois (annule le précédent si en cours)
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Récupérer le code source
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      # 2. Configurer GitHub Pages
+      - name: Configurer GitHub Pages
+        uses: actions/configure-pages@v4
+
+      # 3. Uploader le site (tout le repo = le dossier racine)
+      - name: Uploader les fichiers
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: "."   # Tout le repo depuis la racine
+
+      # 4. Déployer sur Pages
+      - name: Déployer sur GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
