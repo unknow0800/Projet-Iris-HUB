@@ -272,9 +272,9 @@ Ce projet constitue un livrable complet pour le BTS SIO SLAM :
 
 | Nom | Rôle |
 |---|---|
-| *(à remplir)* | Développeur Front-End |
-| *(à remplir)* | Designer UI/UX |
-| *(à remplir)* | Chef de projet |
+| Dowe Marc Rene | Développeur Front-End |
+|  | Designer UI/UX |
+| Dowe Marc | Chef de projet |
 
 **Promotion :** BTS SIO SLAM — Iris Paris  
 **Année scolaire :** 2024–2025
