@@ -1,0 +1,2085 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="dark" data-accent="gold">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Iris Paris — Espace Étudiant</title>
+
+<!-- ════════════════════════════════════════════════════════
+  ██  CONFIGURATION — À REMPLIR AVANT DÉPLOIEMENT  ██
+  Remplace les valeurs ci-dessous par tes vraies clés.
+  Le site fonctionne sans elles (mode dégradé local).
+════════════════════════════════════════════════════════ -->
+<script>
+const CFG = {
+  GOOGLE_CLIENT_ID: "1078633759355-s6viom7b660f0in755erpadkfg4p4mt0.apps.googleusercontent.com",
+  MSFT_CLIENT_ID:   "VOTRE_MICROSOFT_CLIENT_ID",
+  FB_API_KEY:       "AIzaSyCEMsVLWTDFHQB6dtDYm2qC1K3Q6XdFkd0",
+  FB_AUTH_DOMAIN:   "iris-paris-hub.firebaseapp.com",
+  FB_DB_URL:        "https://iris-paris-hub-default-rtdb.europe-west1.firebasedatabase.app",
+  FB_PROJECT_ID:    "iris-paris-hub",
+  FB_APP_ID:        "1:199364662600:web:6777f655a6bdda31c34f7d",
+  CONTACT_EMAIL:    "marcdmr79@gmail.com",    // ← destinataire du formulaire de contact
+  ANTHROPIC_KEY:    "",                        // ← clé API Claude (optionnel, pour l'IA)
+};
+</script>
+
+<!-- ════ POLICES ════ -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,700;1,400&family=Bebas+Neue&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+
+<!-- ════ LIBRAIRIES TIERCES ════ -->
+<!-- Google Identity Services : connexion Google OAuth réelle -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<!-- Microsoft MSAL : connexion Microsoft / MediaSchool réelle -->
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.27.0/lib/msal-browser.min.js"></script>
+
+<!-- ════ FIREBASE — Chat temps réel ════
+  On importe Firebase en module ES6.
+  Si FB_DB_URL n'est pas configuré, le chat bascule
+  automatiquement sur localStorage (multi-onglets). -->
+<script type="module">
+import { initializeApp }   from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+import { getDatabase, ref, push, onValue, serverTimestamp, query, limitToLast, orderByChild }
+                           from "https://www.gstatic.com/firebasejs/11.0.2/firebase-database.js";
+try {
+  const app = initializeApp({
+    apiKey: CFG.FB_API_KEY, authDomain: CFG.FB_AUTH_DOMAIN,
+    databaseURL: CFG.FB_DB_URL, projectId: CFG.FB_PROJECT_ID, appId: CFG.FB_APP_ID,
+  });
+  const db = getDatabase(app);
+  // Exposer les fonctions Firebase au JS global (non-module)
+  window._fbReady = true;
+  window._fbPush  = (room, data) => push(ref(db, `chat/${room}`), { ...data, ts: serverTimestamp() });
+  window._fbListen = (room, cb) => {
+    const q = query(ref(db, `chat/${room}`), orderByChild('ts'), limitToLast(80));
+    onValue(q, snap => { const msgs=[]; snap.forEach(c=>msgs.push({id:c.key,...c.val()})); cb(msgs); });
+  };
+} catch(e) {
+  // Firebase non configuré → mode local silencieux
+  window._fbReady = false;
+}
+</script>
+
+<style>
+/* ══════════════════════════════════════════════════════════
+   VARIABLES CSS — Système de thèmes
+   data-theme="dark|light"  sur <html>
+   data-accent="gold|blue|teal" sur <html>
+══════════════════════════════════════════════════════════ */
+:root {
+  /* Couleurs de structure (thème sombre par défaut — couleurs Iris) */
+  --bg:    #080E1C;  /* Fond principal   */
+  --bg2:   #0E1828;  /* Fond cartes      */
+  --bg3:   #162035;  /* Fond inputs      */
+  --bg4:   #1D2A42;  /* Hover léger      */
+  --blue:  #1A3A6B;  /* Bleu Iris        */
+  --text:  #DCE5F5;  /* Texte principal  */
+  --muted: #6A7D9E;  /* Texte secondaire */
+  --bord:  rgba(245,200,66,.1);   /* Bordure discrète */
+  --bord2: rgba(245,200,66,.22);  /* Bordure active   */
+  --glass: rgba(255,255,255,.035);
+  --gl2:   rgba(255,255,255,.07);
+  --red:   #F04444;
+  --green: #29C76F;
+  --R:     8px;  /* border-radius standard */
+  /* Accent selon data-accent */
+  --ac:   #F5C842;   /* or  */
+  --ac2:  #E8B500;   /* or foncé */
+  --acl:  #FDE97A;   /* or clair */
+}
+/* Thème clair */
+[data-theme="light"] {
+  --bg:    #F5F7FC;
+  --bg2:   #FFFFFF;
+  --bg3:   #EEF1F8;
+  --bg4:   #E4E8F3;
+  --blue:  #2A5BA5;
+  --text:  #1A2340;
+  --muted: #6B7594;
+  --bord:  rgba(42,91,165,.12);
+  --bord2: rgba(42,91,165,.28);
+  --glass: rgba(0,0,0,.03);
+  --gl2:   rgba(0,0,0,.06);
+}
+/* Accent bleu */
+[data-accent="blue"]  { --ac:#378ADD; --ac2:#185FA5; --acl:#85B7EB; }
+/* Accent teal */
+[data-accent="teal"]  { --ac:#1D9E75; --ac2:#0F6E56; --acl:#5DCAA5; }
+
+/* ── Reset & base ── */
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text);
+       overflow-x:hidden; cursor:none; transition:background .35s, color .35s; }
+
+/* ── Curseur personnalisé ── */
+#cur  { width:9px; height:9px; background:var(--ac); border-radius:50%;
+        position:fixed; top:0; left:0; pointer-events:none; z-index:9999; mix-blend-mode:difference; }
+#curR { width:30px; height:30px; border:1px solid rgba(245,200,66,.45); border-radius:50%;
+        position:fixed; top:0; left:0; pointer-events:none; z-index:9998;
+        transition:transform .35s cubic-bezier(.23,1,.32,1); }
+
+/* ── Overlay bruit de fond (effet texture) ── */
+body::after { content:''; position:fixed; inset:0; opacity:.5; pointer-events:none; z-index:9990;
+  background:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.022'/%3E%3C/svg%3E"); }
+
+/* ── Loader de démarrage ── */
+#loader { position:fixed; inset:0; background:var(--bg); z-index:8500;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1.5rem;
+  transition:opacity .5s, visibility .5s; }
+#loader.out { opacity:0; visibility:hidden; }
+.ld-brand { display:flex; align-items:center; gap:.85rem; }
+.ld-box  { width:52px; height:52px; background:var(--ac); border-radius:10px;
+  display:flex; align-items:center; justify-content:center;
+  font-family:'Bebas Neue',sans-serif; font-size:1.5rem; color:var(--bg); letter-spacing:.04em; }
+.ld-name { font-family:'Bebas Neue',sans-serif; font-size:2.2rem; letter-spacing:.1em; }
+.ld-bar  { width:200px; height:2px; background:rgba(255,255,255,.08); border-radius:2px; overflow:hidden; }
+.ld-fill { height:100%; background:linear-gradient(90deg,var(--ac2),var(--acl)); border-radius:2px; width:0; }
+.ld-pct  { font-size:.72rem; color:var(--muted); letter-spacing:.1em; }
+
+/* ── Toast (notification temporaire en bas à droite) ── */
+#toast { position:fixed; bottom:1.75rem; right:1.75rem; background:var(--bg2);
+  border:1px solid var(--bord2); border-radius:var(--R); padding:.8rem 1.2rem;
+  font-size:.84rem; z-index:9500; transform:translateY(16px); opacity:0;
+  transition:all .3s; pointer-events:none; max-width:320px; line-height:1.4; }
+#toast.show { opacity:1; transform:translateY(0); }
+
+/* ── Navigation fixe ── */
+nav { position:fixed; top:0; left:0; right:0; z-index:400;
+  padding:1rem 3rem; display:flex; align-items:center; justify-content:space-between;
+  transition:background .35s, border-color .35s; border-bottom:1px solid transparent; }
+nav.scrolled { background:rgba(8,14,28,.92); backdrop-filter:blur(20px); border-color:var(--bord); }
+[data-theme="light"] nav.scrolled { background:rgba(245,247,252,.92); }
+.nav-brand { display:flex; align-items:center; gap:.7rem; text-decoration:none; }
+.nav-logo  { width:36px; height:36px; background:var(--ac); border-radius:6px;
+  display:flex; align-items:center; justify-content:center;
+  font-family:'Bebas Neue',sans-serif; font-size:1rem; color:var(--bg); transition:transform .2s; }
+.nav-brand:hover .nav-logo { transform:rotate(-4deg) scale(1.08); }
+.nav-school { font-family:'Bebas Neue',sans-serif; font-size:1.15rem; letter-spacing:.1em; }
+.nav-links  { display:flex; gap:2.2rem; list-style:none; }
+.nav-links a { font-size:.8rem; letter-spacing:.07em; text-transform:uppercase; color:var(--muted);
+  text-decoration:none; transition:color .2s; position:relative; }
+.nav-links a::after { content:''; position:absolute; bottom:-3px; left:0; right:0;
+  height:1px; background:var(--ac); transform:scaleX(0); transition:transform .25s; }
+.nav-links a:hover { color:var(--text); }
+.nav-links a:hover::after { transform:scaleX(1); }
+.nav-acts { display:flex; gap:.6rem; align-items:center; }
+
+/* ── Boutons réutilisables ── */
+.btn-ghost { padding:.42rem 1.05rem; border:1px solid var(--bord); border-radius:6px;
+  background:transparent; color:var(--text); font-size:.8rem; cursor:none; transition:all .22s;
+  text-decoration:none; font-family:'DM Sans',sans-serif; display:inline-flex; align-items:center; gap:.35rem; }
+.btn-ghost:hover { border-color:var(--ac); color:var(--ac); }
+.btn-ac { padding:.42rem 1.2rem; border-radius:6px; background:var(--ac); color:var(--bg);
+  font-size:.8rem; font-weight:700; border:none; cursor:none; transition:all .22s;
+  text-decoration:none; font-family:'DM Sans',sans-serif; display:inline-flex; align-items:center; }
+.btn-ac:hover { background:var(--acl); transform:translateY(-1px); }
+.burger { display:none; flex-direction:column; gap:4px; cursor:none; background:none; border:none; }
+.burger span { width:22px; height:1.5px; background:var(--text); display:block; transition:.3s; }
+
+/* ── Menu mobile (hamburger) ── */
+.mob-menu { position:fixed; inset:0; background:var(--bg2); z-index:300;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1.8rem;
+  transform:translateX(100%); transition:transform .4s cubic-bezier(.23,1,.32,1); }
+.mob-menu.open { transform:translateX(0); }
+.mob-menu a { font-family:'Bebas Neue',sans-serif; font-size:2.5rem; letter-spacing:.05em;
+  text-decoration:none; color:var(--text); transition:color .2s; }
+.mob-menu a:hover { color:var(--ac); }
+
+/* ════════════════════════════════════════════
+   HERO — Section d'accueil principale
+════════════════════════════════════════════ */
+#hero { min-height:100vh; display:flex; align-items:center; justify-content:center;
+  text-align:center; position:relative; overflow:hidden; padding:0 2rem; }
+.hero-bg { position:absolute; inset:0;
+  background:radial-gradient(ellipse 70% 55% at 50% 0%, rgba(26,58,107,.65), transparent),
+             radial-gradient(ellipse 40% 35% at 85% 70%, rgba(245,200,66,.05), transparent); }
+.hero-grid { position:absolute; inset:0;
+  background-image:linear-gradient(rgba(245,200,66,.035) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(245,200,66,.035) 1px,transparent 1px);
+  background-size:54px 54px;
+  mask-image:radial-gradient(ellipse at center,black 25%,transparent 72%); }
+/* Photos décoratives flottantes (coins) */
+.hero-fp { position:absolute; inset:0; pointer-events:none; overflow:hidden; }
+.hp { position:absolute; border-radius:12px; overflow:hidden; opacity:0; animation:fadeUp .9s ease forwards; }
+.hp img { width:100%; height:100%; object-fit:cover; filter:brightness(.5) saturate(.75); }
+.hp-1{width:155px;height:195px;top:14%;left:3.5%;transform:rotate(-4deg);animation-delay:.5s}
+.hp-2{width:125px;height:160px;top:54%;left:5%;transform:rotate(3deg);animation-delay:.7s}
+.hp-3{width:155px;height:195px;top:11%;right:3.5%;transform:rotate(4deg);animation-delay:.6s}
+.hp-4{width:125px;height:160px;top:52%;right:5%;transform:rotate(-3deg);animation-delay:.8s}
+.hero-inner { position:relative; z-index:2; }
+.hero-badge { display:inline-flex; align-items:center; gap:.5rem; padding:.33rem .95rem;
+  border:1px solid rgba(245,200,66,.28); border-radius:100px; font-size:.72rem; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--ac); background:rgba(245,200,66,.07); margin-bottom:1.7rem;
+  animation:fadeUp .7s ease both; }
+.hb-dot { width:5px; height:5px; border-radius:50%; background:var(--ac); animation:blink 2s infinite; }
+@keyframes blink { 0%,100%{opacity:1}50%{opacity:.2} }
+/* Titre Bebas Neue géant */
+h1.ht { font-family:'Bebas Neue',sans-serif; font-size:clamp(4.5rem,11vw,9.5rem);
+  line-height:.92; letter-spacing:.025em; color:var(--text); margin-bottom:1.1rem;
+  animation:fadeUp .7s .12s ease both; }
+h1.ht .gold    { color:var(--ac); }
+h1.ht .outline { -webkit-text-stroke:1.5px rgba(255,255,255,.28); color:transparent; }
+.hero-sub { font-size:1rem; color:var(--muted); max-width:460px; margin:0 auto 2rem;
+  line-height:1.72; animation:fadeUp .7s .24s ease both; }
+.hero-ctas { display:flex; gap:.7rem; justify-content:center; flex-wrap:wrap;
+  animation:fadeUp .7s .36s ease both; }
+.hc-main { padding:.82rem 1.9rem; border-radius:var(--R); background:var(--ac); color:var(--bg);
+  font-weight:700; font-size:.92rem; border:none; cursor:none; transition:all .28s;
+  text-decoration:none; font-family:'DM Sans',sans-serif; box-shadow:0 0 38px rgba(245,200,66,.22); }
+.hc-main:hover { background:var(--acl); transform:translateY(-2px); box-shadow:0 0 55px rgba(245,200,66,.38); }
+.hc-sec  { padding:.82rem 1.9rem; border-radius:var(--R); background:var(--gl2);
+  border:1px solid var(--gl2); color:var(--text); font-size:.92rem; cursor:none;
+  transition:all .28s; text-decoration:none; font-family:'DM Sans',sans-serif; backdrop-filter:blur(8px); }
+.hc-sec:hover { border-color:var(--ac); color:var(--ac); transform:translateY(-2px); }
+/* Indicateur de défilement animé */
+.scroll-hint { position:absolute; bottom:2rem; display:flex; flex-direction:column;
+  align-items:center; gap:.4rem; color:var(--muted); font-size:.7rem; letter-spacing:.1em;
+  text-transform:uppercase; animation:fadeUp 1s .9s ease both; }
+.sh-line { width:1px; height:34px; background:linear-gradient(to bottom,var(--ac),transparent);
+  animation:sline 2s infinite; }
+@keyframes sline{0%{transform:scaleY(0);transform-origin:top}50%{transform:scaleY(1);transform-origin:top}51%{transform-origin:bottom}100%{transform:scaleY(0);transform-origin:bottom}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── Défilement de stats (marquee) ── */
+.marq-wrap { border-top:1px solid var(--bord); border-bottom:1px solid var(--bord);
+  background:var(--bg2); overflow:hidden; }
+.marq-track { display:flex; animation:marq 24s linear infinite; }
+.marq-track:hover { animation-play-state:paused; }
+.mi { display:flex; align-items:center; gap:.7rem; padding:1.1rem 2.8rem;
+  border-right:1px solid var(--bord); flex-shrink:0; white-space:nowrap; }
+.mi-num   { font-family:'Bebas Neue',sans-serif; font-size:1.9rem; color:var(--ac); line-height:1; }
+.mi-label { font-size:.68rem; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); line-height:1.35; }
+@keyframes marq { from{transform:translateX(0)} to{transform:translateX(-50%)} }
+
+/* ════════════════════════════════════════════
+   SECTIONS PUBLIQUES (landing page)
+════════════════════════════════════════════ */
+section { position:relative; }
+.si { max-width:1200px; margin:0 auto; padding:5.5rem 2rem; }
+.sl  { font-size:.7rem; letter-spacing:.15em; text-transform:uppercase; color:var(--ac);
+  margin-bottom:.65rem; display:flex; align-items:center; gap:.5rem; }
+.sl::before { content:''; width:16px; height:1px; background:var(--ac); }
+h2.st { font-family:'Bebas Neue',sans-serif; font-size:clamp(2.5rem,5vw,4.2rem);
+  letter-spacing:.03em; color:var(--text); line-height:.94; margin-bottom:.7rem; }
+.sd { color:var(--muted); font-size:.92rem; line-height:1.75; max-width:510px; margin-bottom:2.8rem; }
+
+/* Animation au scroll : les éléments apparaissent de bas en haut */
+.reveal { opacity:0; transform:translateY(24px); transition:opacity .6s ease,transform .6s ease; }
+.reveal.in { opacity:1; transform:none; }
+
+/* ── Grille de photos (5 images en CSS Grid asymétrique) ── */
+.photos-g { display:grid; grid-template-columns:repeat(4,1fr); grid-template-rows:210px 210px; gap:5px; margin-bottom:5rem; }
+.pg { overflow:hidden; border-radius:var(--R); position:relative; }
+.pg img { width:100%; height:100%; object-fit:cover; transition:transform .55s ease;
+  filter:brightness(.65) saturate(.85); }
+.pg:hover img { transform:scale(1.06); filter:brightness(.8) saturate(1); }
+.pg:nth-child(1) { grid-column:span 2; grid-row:span 2; }  /* Grande photo en haut à gauche */
+.pg:nth-child(4) { grid-column:span 2; }
+.pg-ov { position:absolute; inset:0; background:linear-gradient(to top,rgba(8,14,28,.82),transparent);
+  display:flex; align-items:flex-end; padding:.9rem; opacity:0; transition:opacity .3s; }
+.pg:hover .pg-ov { opacity:1; }
+.pg-ov span { font-size:.76rem; font-weight:500; color:var(--ac); }
+
+/* ── Cards de services (grille 3×2) ── */
+.cards-g { display:grid; grid-template-columns:repeat(3,1fr); gap:1px; border:1px solid var(--bord); border-radius:var(--R); overflow:hidden; }
+.fc { background:var(--bg2); padding:2.1rem; position:relative; overflow:hidden; cursor:none; transition:background .28s; }
+/* Effet de lumière qui suit la souris */
+.fc::before { content:''; position:absolute; inset:0;
+  background:radial-gradient(circle at var(--mx,50%) var(--my,50%),rgba(245,200,66,.07),transparent 52%);
+  opacity:0; transition:opacity .4s; }
+.fc:hover::before { opacity:1; }
+.fc:hover { background:var(--bg3); }
+.fc-ico   { width:42px; height:42px; border-radius:9px; background:rgba(245,200,66,.1);
+  border:1px solid rgba(245,200,66,.22); display:flex; align-items:center; justify-content:center;
+  font-size:1.15rem; margin-bottom:1.3rem; }
+.fc-title { font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:.96rem; margin-bottom:.4rem; }
+.fc-desc  { font-size:.84rem; color:var(--muted); line-height:1.65; }
+.fc-lnk   { display:inline-flex; align-items:center; gap:.3rem; margin-top:.9rem;
+  font-size:.78rem; color:var(--ac); text-decoration:none; transition:gap .18s; }
+.fc-lnk:hover { gap:.55rem; }
+
+/* ── Liste d'événements ── */
+.events-list { display:flex; flex-direction:column; gap:2px; }
+.ev { display:grid; grid-template-columns:68px 1fr auto; align-items:center; gap:1.4rem;
+  padding:1.1rem 1.6rem; background:var(--bg3); border:1px solid transparent; cursor:none; transition:all .28s; }
+.ev:hover { border-color:var(--bord2); transform:translateX(4px); background:rgba(26,58,107,.22); }
+.ev-day  { font-family:'Bebas Neue',sans-serif; font-size:2.1rem; color:var(--ac); line-height:1; text-align:center; }
+.ev-mo   { font-size:.64rem; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); text-align:center; }
+.ev-title { font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:.9rem; margin-bottom:.18rem; }
+.ev-loc  { font-size:.78rem; color:var(--muted); }
+.ev-badge { padding:.22rem .75rem; border-radius:4px; font-size:.67rem; letter-spacing:.06em;
+  text-transform:uppercase; background:rgba(245,200,66,.1); color:var(--ac); border:1px solid rgba(245,200,66,.18); }
+
+/* ── Bons plans (6 cartes) ── */
+.plans-g { display:grid; grid-template-columns:repeat(auto-fit,minmax(195px,1fr)); gap:1rem; }
+.pc { padding:1.65rem; background:var(--bg2); border:1px solid var(--bord);
+  border-radius:var(--R); transition:transform .28s,border-color .28s; cursor:none; }
+.pc:hover { transform:translateY(-4px); border-color:var(--bord2); }
+.pc-e  { font-size:1.75rem; margin-bottom:.8rem; }
+.pc-t  { font-family:'Space Grotesk',sans-serif; font-weight:700; margin-bottom:.65rem; font-size:.92rem; }
+.pc-li { list-style:none; }
+.pc-li li { font-size:.8rem; color:var(--muted); padding:.27rem 0;
+  border-bottom:1px solid var(--bord); display:flex; gap:.35rem; }
+.pc-li li::before { content:'→'; color:var(--ac); font-size:.7rem; margin-top:2px; }
+
+/* ── Témoignages ── */
+.tg { display:grid; grid-template-columns:repeat(auto-fit,minmax(275px,1fr)); gap:1.2rem; }
+.tc { padding:1.65rem; background:var(--bg3); border:1px solid var(--bord);
+  border-radius:var(--R); transition:transform .28s,border-color .28s; cursor:none; position:relative; }
+.tc:hover { transform:translateY(-4px); border-color:var(--bord2); }
+.tc-q  { font-size:3.5rem; font-family:'Bebas Neue',sans-serif; color:rgba(245,200,66,.1);
+  position:absolute; top:-.2rem; left:1.1rem; line-height:1; }
+.tc-txt { font-size:.86rem; color:var(--muted); line-height:1.75; margin-bottom:1.2rem; font-style:italic; }
+.tc-au  { display:flex; align-items:center; gap:.6rem; }
+.ta-av  { width:36px; height:36px; border-radius:50%;
+  background:linear-gradient(135deg,var(--blue),var(--ac2));
+  display:flex; align-items:center; justify-content:center; font-size:.75rem; font-weight:700; }
+.ta-nm  { font-weight:600; font-size:.85rem; }
+.ta-ro  { font-size:.73rem; color:var(--muted); }
+
+/* ── FAQ (accordéon) ── */
+.faq-l { max-width:660px; }
+.fq    { border-bottom:1px solid var(--bord); }
+.fq-q  { display:flex; justify-content:space-between; align-items:center; padding:1.05rem 0;
+  font-size:.88rem; font-weight:500; cursor:none; transition:color .2s; }
+.fq-q:hover { color:var(--ac); }
+.fq-i  { width:20px; height:20px; border-radius:50%; border:1px solid var(--bord);
+  display:flex; align-items:center; justify-content:center; font-size:.72rem;
+  transition:transform .3s,background .3s,border-color .3s; flex-shrink:0; }
+.fq.open .fq-i { transform:rotate(45deg); background:var(--ac); border-color:var(--ac); color:var(--bg); }
+.fq-a  { font-size:.83rem; color:var(--muted); line-height:1.7; max-height:0; overflow:hidden;
+  transition:max-height .38s ease, padding .38s; }
+.fq.open .fq-a { max-height:200px; padding-bottom:1.05rem; }
+
+/* ── Formulaire de contact ── */
+.cg { display:grid; grid-template-columns:1fr 1fr; gap:4rem; align-items:start; }
+.cf { display:flex; flex-direction:column; gap:.85rem; }
+.ff label { font-size:.7rem; letter-spacing:.07em; text-transform:uppercase; color:var(--muted); display:block; margin-bottom:.3rem; }
+.ff input,.ff textarea { width:100%; padding:.65rem .88rem;
+  background:var(--bg2); border:1px solid var(--bord); border-radius:5px;
+  color:var(--text); font-size:.86rem; font-family:'DM Sans',sans-serif; outline:none;
+  transition:border-color .22s; }
+.ff input:focus,.ff textarea:focus { border-color:var(--ac); }
+.ff textarea { resize:vertical; min-height:125px; }
+.ci h3 { font-family:'Bebas Neue',sans-serif; font-size:1.75rem; letter-spacing:.05em; margin-bottom:1.4rem; }
+.ii { display:flex; gap:.85rem; align-items:flex-start; margin-bottom:1.05rem; }
+.ii-ico { width:36px; height:36px; background:rgba(245,200,66,.1); border:1px solid rgba(245,200,66,.18);
+  border-radius:6px; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:.9rem; }
+.ii small { font-size:.68rem; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); display:block; }
+.ii span  { font-size:.86rem; }
+
+/* ── Footer ── */
+footer { background:var(--bg); border-top:1px solid var(--bord);
+  padding:2.2rem 3rem; display:flex; flex-wrap:wrap; gap:1rem;
+  align-items:center; justify-content:space-between; }
+.ft-brand { display:flex; align-items:center; gap:.6rem; }
+.ft-logo  { width:32px; height:32px; background:var(--ac); border-radius:5px;
+  display:flex; align-items:center; justify-content:center;
+  font-family:'Bebas Neue',sans-serif; font-size:.9rem; color:var(--bg); }
+.ft-name  { font-family:'Bebas Neue',sans-serif; letter-spacing:.08em; font-size:1.05rem; }
+footer p  { font-size:.76rem; color:var(--muted); }
+.ft-links { display:flex; gap:1.2rem; flex-wrap:wrap; }
+.ft-links a { font-size:.76rem; color:var(--muted); text-decoration:none; transition:color .2s; }
+.ft-links a:hover { color:var(--ac); }
+
+/* ════════════════════════════════════════════
+   MODAL D'AUTHENTIFICATION
+════════════════════════════════════════════ */
+.modal-ov { position:fixed; inset:0; background:rgba(5,9,18,.88); backdrop-filter:blur(22px);
+  z-index:700; display:flex; align-items:center; justify-content:center;
+  opacity:0; pointer-events:none; transition:opacity .32s; padding:1rem; }
+.modal-ov.active { opacity:1; pointer-events:all; }
+.modal { background:var(--bg2); border:1px solid var(--bord); width:min(488px,100%);
+  border-radius:10px; position:relative; overflow:hidden;
+  transform:translateY(26px) scale(.97); transition:transform .38s cubic-bezier(.23,1,.32,1); }
+.modal-ov.active .modal { transform:none; }
+/* Lueur décorative dorée en fond du modal */
+.modal-glow { position:absolute; top:-110px; right:-110px; width:260px; height:260px;
+  border-radius:50%; background:radial-gradient(circle,rgba(245,200,66,.1),transparent 65%); pointer-events:none; }
+.modal-hd { padding:1.85rem 1.85rem 0; position:relative; }
+.modal-brand { display:flex; align-items:center; gap:.55rem; margin-bottom:1.4rem; }
+.modal-logo-b { width:30px; height:30px; background:var(--ac); border-radius:5px;
+  display:flex; align-items:center; justify-content:center;
+  font-family:'Bebas Neue',sans-serif; font-size:.88rem; color:var(--bg); }
+.modal-sn { font-family:'Bebas Neue',sans-serif; font-size:.98rem; letter-spacing:.1em; }
+.modal-close { position:absolute; top:1.1rem; right:1.1rem; width:26px; height:26px;
+  border-radius:50%; background:var(--gl2); border:1px solid var(--bord);
+  color:var(--muted); font-size:.8rem; cursor:none; display:flex; align-items:center; justify-content:center; transition:all .2s; }
+.modal-close:hover { color:var(--text); }
+.modal-ttl { font-family:'Bebas Neue',sans-serif; font-size:2.1rem; letter-spacing:.04em; margin-bottom:.2rem; }
+.modal-sub { font-size:.82rem; color:var(--muted); }
+/* Onglets Connexion / Inscription */
+.modal-tabs { display:flex; gap:3px; margin:1.4rem 0 0; background:rgba(255,255,255,.03); padding:3px; border-radius:6px; }
+.tab-b { flex:1; padding:.42rem; border-radius:5px; border:none; font-size:.8rem;
+  font-family:'DM Sans',sans-serif; cursor:none; transition:all .28s; color:var(--muted); background:transparent; font-weight:500; }
+.tab-b.act { background:var(--ac); color:var(--bg); font-weight:700; }
+.modal-bd { padding:1.4rem 1.85rem 1.85rem; }
+/* Boutons de connexion sociale (Google, Microsoft) */
+.s-btn { width:100%; padding:.65rem; border:1px solid var(--bord); border-radius:5px;
+  background:transparent; color:var(--text); font-size:.83rem; font-family:'DM Sans',sans-serif;
+  cursor:none; transition:all .22s; display:flex; align-items:center; justify-content:center;
+  gap:.5rem; margin-bottom:.5rem; }
+.s-btn:hover { border-color:var(--bord2); background:var(--gl2); }
+.s-btn svg { width:16px; height:16px; }
+/* Séparateur "ou" */
+.divider { text-align:center; color:var(--muted); font-size:.76rem; margin:.85rem 0; position:relative; }
+.divider::before,.divider::after { content:''; position:absolute; top:50%; width:37%; height:1px; background:var(--bord); }
+.divider::before{left:0} .divider::after{right:0}
+/* Champs du formulaire d'auth */
+.mff { margin-bottom:1.05rem; }
+.mff label { font-size:.69rem; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); display:block; margin-bottom:.3rem; }
+.mff input,.mff select { width:100%; padding:.64rem .88rem;
+  background:var(--bg3); border:1px solid var(--bord); border-radius:5px;
+  color:var(--text); font-size:.86rem; font-family:'DM Sans',sans-serif; outline:none;
+  transition:border-color .22s, box-shadow .22s; -webkit-appearance:none; }
+.mff input:focus,.mff select:focus { border-color:var(--ac); box-shadow:0 0 0 3px rgba(245,200,66,.07); }
+.pw-wrap { position:relative; }
+.pw-wrap input { padding-right:2.7rem; }
+.pw-tog { position:absolute; right:.7rem; top:50%; transform:translateY(-50%);
+  background:none; border:none; color:var(--muted); cursor:none; font-size:.8rem; }
+.mff-2 { display:grid; grid-template-columns:1fr 1fr; gap:.7rem; }
+.ferr { color:var(--red); font-size:.73rem; margin-top:.28rem; display:none; }
+/* Bouton de soumission du formulaire */
+.btn-sub { width:100%; padding:.76rem; background:var(--ac); border:none; color:var(--bg);
+  font-size:.9rem; font-family:'DM Sans',sans-serif; font-weight:700; border-radius:5px;
+  cursor:none; transition:all .28s; margin-top:.6rem; }
+.btn-sub:hover { background:var(--acl); transform:translateY(-1px); }
+/* Écran de succès après inscription/connexion */
+.suc-ov { display:none; text-align:center; padding:2.2rem; }
+.suc-ico { font-size:2.4rem; margin-bottom:.65rem; }
+.suc-ov h3 { font-family:'Bebas Neue',sans-serif; font-size:1.9rem; letter-spacing:.04em; margin-bottom:.3rem; }
+.suc-ov p  { font-size:.86rem; color:var(--muted); }
+
+/* ════════════════════════════════════════════
+   DASHBOARD — Espace étudiant connecté
+════════════════════════════════════════════ */
+#dash { display:none; position:fixed; inset:0; background:var(--bg); z-index:600; overflow:hidden; }
+/* Layout sidebar + contenu principal */
+.dl  { display:grid; grid-template-columns:252px 1fr; height:100vh; }
+
+/* ── Sidebar (navigation latérale) ── */
+.ds  { background:var(--bg2); border-right:1px solid var(--bord);
+  display:flex; flex-direction:column; padding:1.4rem 0; overflow-y:auto; }
+.ds-brand { display:flex; align-items:center; gap:.65rem; padding:0 1.15rem 1.4rem;
+  border-bottom:1px solid var(--bord); margin-bottom:.9rem; }
+.ds-logo  { width:32px; height:32px; background:var(--ac); border-radius:6px;
+  display:flex; align-items:center; justify-content:center;
+  font-family:'Bebas Neue',sans-serif; font-size:.9rem; color:var(--bg); }
+.ds-nm    { font-family:'Bebas Neue',sans-serif; font-size:1.05rem; letter-spacing:.08em; }
+/* Widget utilisateur (avatar + nom + promo) */
+.ds-user  { margin:0 .7rem .9rem; padding:.85rem; background:rgba(245,200,66,.06);
+  border:1px solid rgba(245,200,66,.13); border-radius:var(--R); display:flex; align-items:center; gap:.6rem; cursor:none; }
+.ds-user:hover { background:rgba(245,200,66,.1); }
+.dua { width:38px; height:38px; border-radius:50%; object-fit:cover; border:2px solid var(--ac); flex-shrink:0; }
+.du-name  { font-weight:600; font-size:.82rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.du-promo { font-size:.7rem; color:var(--ac); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+/* Items de navigation de la sidebar */
+.ds-sec   { padding:0 .7rem; margin-bottom:.4rem; }
+.ds-lbl   { font-size:.63rem; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); padding:.28rem .48rem; margin-bottom:.28rem; }
+.dni { display:flex; align-items:center; gap:.65rem; padding:.65rem .85rem; border-radius:6px;
+  cursor:none; transition:all .22s; font-size:.83rem; color:var(--muted); border:1px solid transparent; }
+.dni:hover { background:var(--gl2); color:var(--text); }
+.dni.active { background:rgba(245,200,66,.09); border-color:rgba(245,200,66,.18); color:var(--ac); font-weight:500; }
+.dni-ico { font-size:.95rem; width:18px; text-align:center; }
+
+/* ── Zone principale du dashboard ── */
+.dm  { overflow-y:auto; display:flex; flex-direction:column; }
+/* Barre supérieure sticky */
+.dtb { padding:1.1rem 1.85rem; border-bottom:1px solid var(--bord);
+  display:flex; align-items:center; justify-content:space-between;
+  position:sticky; top:0; background:rgba(8,14,28,.93); backdrop-filter:blur(12px); z-index:10; }
+[data-theme="light"] .dtb { background:rgba(245,247,252,.93); }
+.dtb-ttl { font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.05rem; }
+.dc  { padding:1.85rem; flex:1; }
+/* Panels : chaque écran du dashboard est un panel, un seul visible à la fois */
+.panel   { display:none; }
+.panel.active { display:block; }
+
+/* ── Panel Home : stats + widgets ── */
+.dw h2 { font-family:'Bebas Neue',sans-serif; font-size:2.3rem; letter-spacing:.04em; margin-bottom:.2rem; }
+.dw h2 span { color:var(--ac); }
+.dw p  { font-size:.85rem; color:var(--muted); }
+.dst   { display:grid; grid-template-columns:repeat(4,1fr); gap:.9rem; margin:1.5rem 0 1.8rem; }
+.dsc   { background:var(--bg2); border:1px solid var(--bord); border-radius:var(--R); padding:1rem; transition:border-color .22s; }
+.dsc:hover { border-color:var(--bord2); }
+.dsc-n { font-family:'Bebas Neue',sans-serif; font-size:1.9rem; color:var(--ac); line-height:1; margin-bottom:.15rem; }
+.dsc-l { font-size:.68rem; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); }
+.dfeed { display:grid; grid-template-columns:1fr 1fr; gap:1.4rem; margin-bottom:1.4rem; }
+.fcard { background:var(--bg2); border:1px solid var(--bord); border-radius:var(--R); overflow:hidden; }
+.fcH   { padding:.9rem 1.15rem; border-bottom:1px solid var(--bord);
+  display:flex; align-items:center; justify-content:space-between; }
+.fcH-t { font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:.85rem; }
+.fcB   { padding:1.1rem; max-height:270px; overflow-y:auto; display:flex; flex-direction:column; gap:.65rem; }
+.ai  { padding:.7rem; background:var(--bg3); border-radius:6px; }
+.ai.pin { border-left:2px solid var(--ac); }
+.ai-tag  { font-size:.72rem; color:var(--ac); margin-bottom:.18rem; }
+.ai-ttl  { font-size:.83rem; font-weight:500; }
+.ai-sub  { font-size:.75rem; color:var(--muted); margin-top:.15rem; }
+
+/* ── Widget Météo ── */
+.weather-widget { background:var(--bg2); border:1px solid var(--bord); border-radius:var(--R);
+  padding:1.1rem 1.2rem; display:flex; align-items:center; gap:1rem; }
+.w-ico { font-size:2.2rem; flex-shrink:0; }
+.w-temp { font-family:'Bebas Neue',sans-serif; font-size:2rem; color:var(--ac); line-height:1; }
+.w-desc { font-size:.78rem; color:var(--muted); }
+.w-detail { font-size:.72rem; color:var(--muted); margin-top:.15rem; }
+
+/* ── Widget Compte à rebours ── */
+.countdown-widget { background:var(--bg2); border:1px solid var(--bord); border-radius:var(--R); padding:1.1rem 1.2rem; }
+.cw-label { font-size:.72rem; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin-bottom:.5rem; }
+.cw-event { font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:.9rem; margin-bottom:.6rem; }
+.cw-grid  { display:flex; gap:.6rem; }
+.cw-unit  { text-align:center; background:var(--bg3); border-radius:5px; padding:.4rem .6rem; min-width:42px; }
+.cw-num   { font-family:'Bebas Neue',sans-serif; font-size:1.5rem; color:var(--ac); line-height:1; }
+.cw-lbl   { font-size:.6rem; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
+
+/* ── Chat de promo ── */
+.promo-lock { background:rgba(240,68,68,.08); border:1px solid rgba(240,68,68,.25);
+  border-radius:6px; padding:.75rem 1rem; font-size:.82rem; color:var(--red); margin-bottom:1rem; display:none; }
+.chat-wrap { background:var(--bg2); border:1px solid var(--bord); border-radius:var(--R); }
+.chat-hd   { padding:.9rem 1.2rem; border-bottom:1px solid var(--bord);
+  display:flex; align-items:center; justify-content:space-between; }
+.chat-online { display:flex; align-items:center; gap:.4rem; font-size:.8rem; font-weight:500; }
+.ch-dot { width:7px; height:7px; border-radius:50%; background:var(--green); }
+/* Zone de messages scrollable */
+.chat-msgs { height:360px; overflow-y:auto; display:flex; flex-direction:column; gap:.55rem; padding:1.1rem; }
+.chat-msgs::-webkit-scrollbar { width:3px; }
+.chat-msgs::-webkit-scrollbar-thumb { background:var(--bord); border-radius:3px; }
+.chat-empty { margin:auto; text-align:center; color:var(--muted); font-size:.85rem; padding:2rem; }
+/* Bulle de message individuelle */
+.cmsg { display:flex; align-items:flex-start; gap:.55rem; position:relative; }
+.cmsg.me { flex-direction:row-reverse; }
+.cm-av { width:30px; height:30px; border-radius:50%; object-fit:cover; border:1px solid var(--bord); flex-shrink:0; }
+.cm-body { max-width:78%; }
+.cm-meta { display:flex; align-items:center; gap:.4rem; font-size:.68rem; color:var(--muted); margin-bottom:.2rem; }
+.cmsg.me .cm-meta { justify-content:flex-end; }
+.cm-name { font-weight:600; color:var(--text); }
+.cm-bub  { padding:.55rem .85rem; border-radius:8px; font-size:.83rem; line-height:1.52; word-break:break-word; }
+.cmsg.other .cm-bub { background:var(--bg3); border:1px solid var(--bord); border-radius:4px 8px 8px 8px; }
+.cmsg.me    .cm-bub { background:rgba(245,200,66,.13); border:1px solid rgba(245,200,66,.22); border-radius:8px 4px 8px 8px; }
+/* Réactions emoji sous les messages */
+.msg-reactions { display:flex; flex-wrap:wrap; gap:3px; margin-top:3px; }
+.react-pill { display:inline-flex; align-items:center; gap:2px; padding:1px 6px;
+  background:var(--bg3); border:1px solid var(--bord); border-radius:100px;
+  font-size:.72rem; cursor:none; transition:all .18s; }
+.react-pill:hover { border-color:var(--ac); }
+.react-pill.mine { background:rgba(245,200,66,.1); border-color:var(--bord2); }
+/* Sélecteur d'emoji flottant */
+.emoji-picker-wrap { position:absolute; bottom:100%; left:0; z-index:10; display:none; }
+.cmsg.me .emoji-picker-wrap { left:auto; right:0; }
+.emoji-picker { background:var(--bg2); border:1px solid var(--bord); border-radius:var(--R);
+  padding:.4rem .5rem; display:flex; gap:.25rem; }
+.e-btn { font-size:1.1rem; cursor:none; padding:.18rem; border-radius:4px; background:none; border:none; transition:transform .15s; }
+.e-btn:hover { transform:scale(1.25); }
+.cmsg:hover .react-trigger { opacity:1; }
+.react-trigger { opacity:0; position:absolute; top:0; font-size:.8rem; cursor:none;
+  background:var(--bg2); border:1px solid var(--bord); border-radius:100px;
+  padding:.1rem .4rem; transition:opacity .2s; white-space:nowrap; }
+.cmsg.other .react-trigger { right:-28px; }
+.cmsg.me    .react-trigger { left:-28px; }
+/* Barre d'envoi */
+.chat-inp-row { display:flex; gap:.5rem; padding:.9rem 1.1rem; border-top:1px solid var(--bord); }
+.chat-inp  { flex:1; padding:.55rem .88rem; background:var(--bg3); border:1px solid var(--bord);
+  border-radius:6px; color:var(--text); font-family:'DM Sans',sans-serif; font-size:.83rem; outline:none; transition:border-color .22s; }
+.chat-inp:focus { border-color:var(--ac); }
+.chat-send { padding:.55rem 1rem; background:var(--ac); border:none; border-radius:6px;
+  color:var(--bg); font-size:.82rem; font-weight:700; cursor:none; transition:all .2s; font-family:'DM Sans',sans-serif; }
+.chat-send:hover { background:var(--acl); }
+
+/* ── Assistant IA ── */
+.ai-wrap { background:var(--bg2); border:1px solid var(--bord); border-radius:var(--R); padding:1.2rem; }
+.ai-hd   { display:flex; align-items:center; gap:.7rem; margin-bottom:1.1rem;
+  padding-bottom:.9rem; border-bottom:1px solid var(--bord); }
+.ai-av-b { width:34px; height:34px; border-radius:50%; background:linear-gradient(135deg,var(--blue),var(--bg));
+  border:2px solid var(--ac); display:flex; align-items:center; justify-content:center;
+  font-size:.8rem; color:var(--ac); font-weight:700; }
+.ai-status { display:flex; align-items:center; gap:.3rem; font-size:.72rem; color:var(--green); }
+.ai-msgs { height:340px; overflow-y:auto; display:flex; flex-direction:column; gap:.7rem; margin-bottom:.9rem; }
+.ai-msgs::-webkit-scrollbar { width:3px; }
+.ai-msgs::-webkit-scrollbar-thumb { background:var(--bord); border-radius:3px; }
+.ai-msg  { display:flex; gap:.55rem; align-items:flex-start; }
+.ai-msg.user { flex-direction:row-reverse; }
+.aim-av  { width:26px; height:26px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:.7rem; font-weight:700; }
+.aim-av.bot  { background:linear-gradient(135deg,var(--blue),var(--bg)); border:1px solid var(--ac); color:var(--ac); }
+.aim-av.user { background:linear-gradient(135deg,var(--blue),var(--ac2)); }
+.aim-bub { padding:.55rem .85rem; border-radius:8px; font-size:.82rem; line-height:1.57; max-width:84%; }
+.ai-msg.iris .aim-bub { background:var(--bg3); border:1px solid var(--bord); }
+.ai-msg.user .aim-bub { background:rgba(245,200,66,.09); border:1px solid rgba(245,200,66,.18); }
+/* Points de chargement (IA en train de répondre) */
+.ai-dot  { width:5px; height:5px; border-radius:50%; background:var(--muted); display:inline-block; animation:dot .8s infinite; margin:0 1px; }
+.ai-dot:nth-child(2){animation-delay:.2s} .ai-dot:nth-child(3){animation-delay:.4s}
+@keyframes dot{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+.ai-sugs { display:flex; flex-wrap:wrap; gap:.35rem; margin-bottom:.65rem; }
+.ai-sug  { padding:.28rem .65rem; border:1px solid var(--bord); border-radius:100px; font-size:.7rem;
+  cursor:none; background:transparent; color:var(--muted); transition:all .2s; font-family:'DM Sans',sans-serif; }
+.ai-sug:hover { border-color:var(--ac); color:var(--ac); }
+.ai-inp-row { display:flex; gap:.5rem; }
+.ai-inp  { flex:1; padding:.55rem .88rem; background:var(--bg3); border:1px solid var(--bord);
+  border-radius:6px; color:var(--text); font-family:'DM Sans',sans-serif; font-size:.82rem; outline:none; transition:border-color .22s; }
+.ai-inp:focus { border-color:var(--ac); }
+.ai-send { padding:.55rem .95rem; background:var(--blue); border:1px solid rgba(245,200,66,.28);
+  border-radius:6px; color:var(--ac); font-size:.8rem; font-weight:600; cursor:none; transition:all .2s; font-family:'DM Sans',sans-serif; }
+.ai-send:hover { border-color:var(--ac); }
+
+/* ── Events (cartes) ── */
+.evg { display:grid; grid-template-columns:repeat(auto-fill,minmax(270px,1fr)); gap:1rem; }
+.evc { background:var(--bg3); border:1px solid var(--bord); border-radius:var(--R); overflow:hidden; cursor:none; transition:all .28s; }
+.evc:hover { transform:translateY(-3px); border-color:var(--bord2); }
+.evc-img { height:135px; overflow:hidden; }
+.evc-img img { width:100%; height:100%; object-fit:cover; filter:brightness(.58); transition:transform .4s; }
+.evc:hover .evc-img img { transform:scale(1.05); }
+.evc-bdy { padding:1rem; }
+.evc-date { font-size:.7rem; color:var(--ac); letter-spacing:.06em; text-transform:uppercase; margin-bottom:.25rem; }
+.evc-ttl  { font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:.9rem; margin-bottom:.22rem; }
+.evc-loc  { font-size:.76rem; color:var(--muted); }
+.evc-ft   { padding:.65rem 1rem; border-top:1px solid var(--bord); display:flex; justify-content:space-between; align-items:center; }
+.ev-att   { padding:.28rem .75rem; border-radius:5px; font-size:.72rem; cursor:none;
+  font-family:'DM Sans',sans-serif; font-weight:600; transition:all .2s; }
+.ev-att.go   { background:rgba(245,200,66,.12); color:var(--ac); border:1px solid rgba(245,200,66,.22); }
+.ev-att.go:hover { background:var(--ac); color:var(--bg); }
+.ev-att.done { background:rgba(41,199,111,.1); color:var(--green); border:1px solid rgba(41,199,111,.2); }
+
+/* ── Profil ── */
+.prof-hd  { display:flex; align-items:center; gap:1.4rem; padding:1.4rem;
+  background:var(--bg2); border:1px solid var(--bord); border-radius:var(--R); margin-bottom:1.4rem; }
+.prof-av  { width:70px; height:70px; border-radius:50%; object-fit:cover; border:3px solid var(--ac); flex-shrink:0; }
+.prof-nm  { font-family:'Bebas Neue',sans-serif; font-size:1.75rem; letter-spacing:.04em; margin-bottom:.1rem; }
+.prof-bdg { display:inline-flex; align-items:center; gap:.3rem; padding:.18rem .65rem; border-radius:100px;
+  background:rgba(245,200,66,.09); border:1px solid rgba(245,200,66,.22); font-size:.7rem; color:var(--ac); }
+.prof-sts { display:grid; grid-template-columns:repeat(3,1fr); gap:1rem; margin-bottom:1.4rem; }
+.ps-card  { background:var(--bg2); border:1px solid var(--bord); border-radius:var(--R); padding:.95rem; text-align:center; }
+.ps-n { font-family:'Bebas Neue',sans-serif; font-size:1.85rem; color:var(--ac); line-height:1; }
+.ps-l { font-size:.68rem; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); }
+.prof-ed  { background:var(--bg2); border:1px solid var(--bord); border-radius:var(--R); padding:1.4rem; }
+.prof-ed h3 { font-family:'Space Grotesk',sans-serif; font-weight:700; margin-bottom:1.15rem; font-size:.92rem; }
+/* Sélecteur d'avatars par défaut */
+.av-picker { display:flex; flex-wrap:wrap; gap:.6rem; margin-bottom:1rem; }
+.av-opt { width:52px; height:52px; border-radius:50%; border:2px solid transparent;
+  cursor:none; overflow:hidden; transition:all .22s; object-fit:cover; }
+.av-opt:hover { border-color:var(--ac); transform:scale(1.06); }
+.av-opt.sel   { border-color:var(--ac); box-shadow:0 0 0 3px rgba(245,200,66,.25); }
+.av-upload-btn { width:52px; height:52px; border-radius:50%; border:1px dashed var(--bord2);
+  background:var(--bg3); display:flex; align-items:center; justify-content:center;
+  cursor:none; font-size:1.3rem; transition:all .22s; }
+.av-upload-btn:hover { border-color:var(--ac); background:rgba(245,200,66,.06); }
+/* Sélecteur de thème */
+.theme-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:.6rem; margin-bottom:1rem; }
+.theme-opt { padding:.5rem; border:1px solid var(--bord); border-radius:5px; cursor:none; transition:all .2s; text-align:center; font-size:.78rem; }
+.theme-opt:hover { border-color:var(--ac); }
+.theme-opt.sel { border-color:var(--ac); background:rgba(245,200,66,.08); color:var(--ac); }
+.accent-grid { display:flex; gap:.5rem; margin-bottom:1.2rem; }
+.accent-dot  { width:28px; height:28px; border-radius:50%; cursor:none; border:2px solid transparent; transition:all .2s; }
+.accent-dot:hover  { transform:scale(1.12); }
+.accent-dot.sel    { border-color:var(--text); box-shadow:0 0 0 3px rgba(255,255,255,.15); }
+.pfg { display:grid; grid-template-columns:1fr 1fr; gap:.9rem; }
+
+/* ── Notifications ── */
+.notif-l { display:flex; flex-direction:column; gap:.45rem; }
+.nitem { display:flex; align-items:flex-start; gap:.7rem; padding:.85rem .95rem;
+  background:var(--bg3); border:1px solid var(--bord); border-radius:6px; transition:border-color .2s; }
+.nitem.unread { border-left:2px solid var(--ac); background:rgba(245,200,66,.02); }
+.ndot { width:6px; height:6px; border-radius:50%; background:var(--ac); flex-shrink:0; margin-top:5px; }
+.ndot.read { background:var(--muted); }
+.ntxt { font-size:.81rem; line-height:1.5; }
+.ntime { font-size:.7rem; color:var(--muted); margin-top:.12rem; }
+
+/* ── Quiz étudiants ── */
+.quiz-wrap { background:var(--bg2); border:1px solid var(--bord); border-radius:var(--R); padding:1.5rem; }
+.quiz-q  { font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:1rem; margin-bottom:1.2rem; line-height:1.5; }
+.quiz-opts { display:flex; flex-direction:column; gap:.6rem; margin-bottom:1.2rem; }
+.qopt { padding:.75rem 1rem; border:1px solid var(--bord); border-radius:6px; background:var(--bg3);
+  cursor:none; font-size:.88rem; transition:all .22s; text-align:left; font-family:'DM Sans',sans-serif; color:var(--text); }
+.qopt:hover { border-color:var(--bord2); background:var(--bg4); }
+.qopt.correct { border-color:var(--green); background:rgba(41,199,111,.1); color:var(--green); }
+.qopt.wrong   { border-color:var(--red);   background:rgba(240,68,68,.1);  color:var(--red); }
+.quiz-info { font-size:.8rem; color:var(--muted); }
+.quiz-score { font-family:'Bebas Neue',sans-serif; font-size:1.6rem; color:var(--ac); }
+.quiz-progress { height:3px; background:var(--bord); border-radius:2px; margin-bottom:1.2rem; overflow:hidden; }
+.quiz-bar { height:100%; background:var(--ac); border-radius:2px; transition:width .4s; }
+
+/* ── Responsive ── */
+@media(max-width:1100px){ .dst{grid-template-columns:repeat(2,1fr)} .dfeed{grid-template-columns:1fr} }
+@media(max-width:900px){
+  nav{padding:.85rem 1.25rem} .nav-links{display:none} .burger{display:flex}
+  .cg{grid-template-columns:1fr;gap:2rem} .cards-g{grid-template-columns:1fr}
+  .photos-g{grid-template-columns:1fr 1fr;grid-template-rows:auto}
+  .pg:nth-child(1){grid-column:span 2} .ev{grid-template-columns:60px 1fr} .ev-badge{display:none}
+  .dl{grid-template-columns:1fr} .ds{display:none}
+}
+@media(max-width:600px){ .si{padding:3.8rem 1.1rem} .hp-1,.hp-2,.hp-3,.hp-4{display:none} .pfg{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+
+<!-- ════ LOADER ════ -->
+<div id="loader">
+  <div class="ld-brand"><div class="ld-box">IRIS</div><div class="ld-name">PARIS</div></div>
+  <div class="ld-bar"><div class="ld-fill" id="lf"></div></div>
+  <div class="ld-pct" id="lp">0%</div>
+</div>
+
+<!-- ════ CURSEUR ════ -->
+<div id="cur"></div><div id="curR"></div>
+
+<!-- ════ TOAST ════ -->
+<div id="toast"></div>
+
+<!-- ════ MENU MOBILE ════ -->
+<div class="mob-menu" id="mobMenu">
+  <a href="#services" onclick="closeMob()">Services</a>
+  <a href="#evenements" onclick="closeMob()">Événements</a>
+  <a href="#bons-plans" onclick="closeMob()">Bons Plans</a>
+  <a href="#temoignages" onclick="closeMob()">Témoignages</a>
+  <a href="#contact" onclick="closeMob()">Contact</a>
+</div>
+
+<!-- ════ NAVIGATION ════ -->
+<nav id="nav">
+  <a class="nav-brand" href="#"><div class="nav-logo">IRIS</div><span class="nav-school">PARIS</span></a>
+  <ul class="nav-links">
+    <li><a href="#services">Services</a></li>
+    <li><a href="#evenements">Événements</a></li>
+    <li><a href="#bons-plans">Bons Plans</a></li>
+    <li><a href="#temoignages">Témoignages</a></li>
+    <li><a href="#contact">Contact</a></li>
+  </ul>
+  <div class="nav-acts">
+    <a class="btn-ghost" href="#" onclick="openAuth('login');return false;">Connexion</a>
+    <a class="btn-ac"    href="#" onclick="openAuth('register');return false;">S'inscrire</a>
+  </div>
+  <button class="burger" onclick="document.getElementById('mobMenu').classList.toggle('open')">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
+
+<!-- ════ HERO ════ -->
+<section id="accueil">
+<div id="hero">
+  <div class="hero-bg"></div><div class="hero-grid"></div>
+  <div class="hero-fp">
+    <div class="hp hp-1"><img src="campus.jfif" alt="Campus"></div>
+    <div class="hp hp-2"><img src="etudiant.jpg" alt="Étudiants"></div>
+    <div class="hp hp-3"><img src="codage.jfif" alt="Coding"></div>
+    <div class="hp hp-4"><img src="vie.jpg" alt="Vie étudiante"></div>
+  </div>
+  <div class="hero-inner">
+    <div class="hero-badge"><div class="hb-dot"></div>Espace Étudiant Officiel · Iris Paris</div>
+    <h1 class="ht"><span class="gold">IRIS</span> PARIS<br><span class="outline">TA PROMO.</span><br>TON ESPACE.</h1>
+    <p class="hero-sub">Connecte-toi, rejoins ta promo, découvre les événements et utilise l'IA pour t'aider au quotidien.</p>
+    <div class="hero-ctas">
+      <a href="#" class="hc-main" onclick="openAuth('register');return false;">🚀 Créer mon espace</a>
+      <a href="#services" class="hc-sec">Explorer ↓</a>
+    </div>
+  </div>
+  <div class="scroll-hint"><div class="sh-line"></div>Défiler</div>
+</div>
+</section>
+
+<!-- ════ MARQUEE STATS ════ -->
+<div class="marq-wrap">
+  <div style="overflow:hidden"><div class="marq-track" id="mt">
+    <div class="mi"><div class="mi-num">3 500+</div><div class="mi-label">Étudiants<br>actifs</div></div>
+    <div class="mi"><div class="mi-num">42</div><div class="mi-label">Associations<br>étudiantes</div></div>
+    <div class="mi"><div class="mi-num">120+</div><div class="mi-label">Événements<br>par an</div></div>
+    <div class="mi"><div class="mi-num">MediaSchool</div><div class="mi-label">Groupe<br>partenaire</div></div>
+    <div class="mi"><div class="mi-num">98%</div><div class="mi-label">Satisfaction<br>étudiants</div></div>
+    <div class="mi"><div class="mi-num">Paris 17e</div><div class="mi-label">Cœur de<br>la ville</div></div>
+    <div class="mi"><div class="mi-num">25 ans</div><div class="mi-label">D'excellence<br>numérique</div></div>
+  </div></div>
+</div>
+
+<!-- ════ PHOTOS AMBIANCE ════ -->
+<section><div class="si">
+  <div class="sl">Ambiance Campus</div>
+  <h2 class="st reveal">La vie à Iris,<br>en images</h2>
+  <p class="sd reveal">Un campus vivant, des étudiants passionnés, des projets qui font la différence.</p>
+  <div class="photos-g reveal">
+    <div class="pg"><img src="vie-campus.jfif" alt="Campus"><div class="pg-ov"><span>📍 Campus Iris Paris</span></div></div>
+    <div class="pg"><img src="ambiance.jpg" alt="Coding"><div class="pg-ov"><span>💻 Coding sessions</span></div></div>
+    <div class="pg"><img src="https://tse2.mm.bing.net/th/id/OIP.G8HbooeTL7q8MzzKI7EHrwHaJ4?rs=1&pid=ImgDetMain&o=7&rm=3" alt="Events"><div class="pg-ov"><span>🎉 Événements</span></div></div>
+    <div class="pg"><img src="groupe.jpg" alt="Groupe"><div class="pg-ov"><span>🤝 Collectifs</span></div></div>
+    <div class="pg"><img src="https://rentree-decalee.fr/wp-content/uploads/2017/12/iris-informatique-numerique-rentree-de-mars-decalee-1024x536.jpg" alt="Les Rentrée decalee"><div class="pg-ov"><span>📚 Un mauvais départ ?Voici la solution</span></div></div>
+  </div>
+</div></section>
+
+<!-- ════ SERVICES ════ -->
+<section id="services" style="background:var(--bg2)"><div class="si">
+  <div class="sl">Services</div>
+  <h2 class="st reveal">Tout ce dont<br>tu as besoin</h2>
+  <p class="sd reveal">L'école met à ta disposition une multitude de ressources pour réussir.</p>
+  <div class="cards-g reveal">
+    <div class="fc" onmousemove="glowCard(this,event)"><div class="fc-ico">📅</div><div class="fc-title">Agenda</div><div class="fc-desc">Événements, dates importantes et activités du campus centralisés.</div><a class="fc-lnk" href="#evenements">Voir l'agenda →</a></div>
+    <div class="fc" onmousemove="glowCard(this,event)"><div class="fc-ico">🤖</div><div class="fc-title">Assistant IA</div><div class="fc-desc">Une IA intégrée pour répondre à toutes tes questions sur la vie étudiante.</div><a class="fc-lnk" href="#" onclick="openAuth('register');return false;">Accéder →</a></div>
+    <div class="fc" onmousemove="glowCard(this,event)"><div class="fc-ico">💬</div><div class="fc-title">Chat Promo</div><div class="fc-desc">Discussions en temps réel par promotion. Chaque promo a son espace privé.</div><a class="fc-lnk" href="#" onclick="openAuth('register');return false;">Rejoindre →</a></div>
+    <div class="fc" onmousemove="glowCard(this,event)"><div class="fc-ico">🗂️</div><div class="fc-title">Ressources</div><div class="fc-desc">ENT, bibliothèque numérique, mails scolaires, outils pédagogiques.</div><a class="fc-lnk" href="#">Accéder →</a></div>
+    <div class="fc" onmousemove="glowCard(this,event)"><div class="fc-ico">🎭</div><div class="fc-title">Associations</div><div class="fc-desc">42 associations : sport, culture, art, gaming, humanitaire.</div><a class="fc-lnk" href="#">Découvrir →</a></div>
+    <div class="fc" onmousemove="glowCard(this,event)"><div class="fc-ico">💡</div><div class="fc-title">Bons Plans</div><div class="fc-desc">Transport, logement, cantine, réductions. Vivre à Paris sans se ruiner.</div><a class="fc-lnk" href="#bons-plans">Voir →</a></div>
+  </div>
+</div></section>
+
+<!-- ════ ÉVÉNEMENTS ════ -->
+<section id="evenements"><div class="si">
+  <div class="sl">Agenda</div>
+  <h2 class="st reveal">Événements à venir</h2>
+  <p class="sd reveal">Ne rate aucun moment de la vie du campus.</p>
+  <div class="events-list reveal">
+    <div class="ev"><div><div class="ev-day">12</div><div class="ev-mo">Mai</div></div><div><div class="ev-title">Soirée d'intégration BTS SIO</div><div class="ev-loc">📍 Amphi A · 19h00</div></div><div class="ev-badge">Soirée</div></div>
+    <div class="ev"><div><div class="ev-day">18</div><div class="ev-mo">Mai</div></div><div><div class="ev-title">Hackathon 24h Développement Web</div><div class="ev-loc">📍 Salles Info · 09h00</div></div><div class="ev-badge">Compétition</div></div>
+    <div class="ev"><div><div class="ev-day">24</div><div class="ev-mo">Mai</div></div><div><div class="ev-title">Forum des Associations</div><div class="ev-loc">📍 Hall Principal · 10h00</div></div><div class="ev-badge">Forum</div></div>
+    <div class="ev"><div><div class="ev-day">02</div><div class="ev-mo">Juin</div></div><div><div class="ev-title">Journée Portes Ouvertes</div><div class="ev-loc">📍 Campus entier · 10h00</div></div><div class="ev-badge">Tous</div></div>
+    <div class="ev"><div><div class="ev-day">15</div><div class="ev-mo">Juin</div></div><div><div class="ev-title">Tournoi FIFA inter-promos</div><div class="ev-loc">📍 Salle BDE · 14h00</div></div><div class="ev-badge">Gaming</div></div>
+    <div class="ev"><div><div class="ev-day">28</div><div class="ev-mo">Juin</div></div><div><div class="ev-title">Iris Gala — Soirée de fin d'année</div><div class="ev-loc">📍 Rooftop Paris · 20h00</div></div><div class="ev-badge">Gala</div></div>
+  </div>
+</div></section>
+
+<!-- ════ BONS PLANS ════ -->
+<section id="bons-plans" style="background:var(--bg2)"><div class="si">
+  <div class="sl">Bons Plans</div>
+  <h2 class="st reveal">Vivre à Paris,<br>étudiant</h2>
+  <p class="sd reveal">Tous les conseils pour optimiser ton budget.</p>
+  <div class="plans-g">
+    <div class="pc reveal"><div class="pc-e">🚇</div><div class="pc-t">Transport</div><ul class="pc-li"><li>Pass Navigo Étudiant réduit</li><li>Vélib' 1re demi-heure gratuite</li><li>RATP tarif -26 ans</li><li>Blablacar week-ends</li></ul></div>
+    <div class="pc reveal"><div class="pc-e">🏠</div><div class="pc-t">Logement</div><ul class="pc-li"><li>CROUS résidences U</li><li>APL aide au logement</li><li>Lokaviz annonces étu.</li><li>Colocation recommandée</li></ul></div>
+    <div class="pc reveal"><div class="pc-e">🍽️</div><div class="pc-t">Resto U</div><ul class="pc-li"><li>Cantine CROUS 3,30 €</li><li>Too Good To Go</li><li>Lidl & Aldi à proximité</li><li>Meal prep ×3 économies</li></ul></div>
+    <div class="pc reveal"><div class="pc-e">💻</div><div class="pc-t">Tech & Outils</div><ul class="pc-li"><li>GitHub Student Pack gratuit</li><li>Office 365 via l'école</li><li>JetBrains EDU gratuit</li><li>Figma — plan Education</li></ul></div>
+    <div class="pc reveal"><div class="pc-e">🎬</div><div class="pc-t">Culture</div><ul class="pc-li"><li>Musées nationaux gratuits</li><li>Spotify étudiant</li><li>UGC Illimité étudiant</li><li>Pass Culture 300 €/an</li></ul></div>
+    <div class="pc reveal"><div class="pc-e">🏋️</div><div class="pc-t">Sport</div><ul class="pc-li"><li>SUAPS sport univ gratuit</li><li>Parcs Paris pour courir</li><li>Épicerie solidaire campus</li><li>Médecine univ gratuite</li></ul></div>
+  </div>
+</div></section>
+
+<!-- ════ TÉMOIGNAGES + FAQ ════ -->
+<section id="temoignages"><div class="si">
+  <div class="sl">Témoignages</div>
+  <h2 class="st reveal">Ils en parlent<br>mieux que nous</h2>
+  <div class="tg">
+    <div class="tc reveal"><div class="tc-q">"</div><p class="tc-txt">L'intégration à Iris a été top grâce aux semaines d'accueil et au parrainage. J'ai trouvé mes repères en moins d'une semaine !</p><div class="tc-au"><div class="ta-av">SK</div><div><div class="ta-nm">Sofia K.</div><div class="ta-ro">BTS SIO 1re année</div></div></div></div>
+    <div class="tc reveal"><div class="tc-q">"</div><p class="tc-txt">Le hackathon organisé par le BDE était incroyable. J'ai rencontré des gens de toutes les filières et on a gagné !</p><div class="tc-au"><div class="ta-av">AM</div><div><div class="ta-nm">Antoine M.</div><div class="ta-ro">BTS SIO 2e année</div></div></div></div>
+    <div class="tc reveal"><div class="tc-q">"</div><p class="tc-txt">Les bons plans m'ont économisé 150 € le premier mois. Le Pass Culture + CROUS c'est imbattable.</p><div class="tc-au"><div class="ta-av">LB</div><div><div class="ta-nm">Laura B.</div><div class="ta-ro">Prépa Informatique</div></div></div></div>
+  </div>
+  <div style="margin-top:3.8rem">
+    <div class="sl">FAQ</div>
+    <h2 class="st reveal" style="margin-bottom:1.8rem">Questions fréquentes</h2>
+    <div class="faq-l reveal">
+      <div class="fq"><div class="fq-q" onclick="this.parentElement.classList.toggle('open')">Comment accéder à l'ENT ? <span class="fq-i">+</span></div><div class="fq-a">Connecte-toi sur ent.ecoleiris.fr avec ton adresse mail scolaire. En cas de problème, le service info est au bureau B204.</div></div>
+      <div class="fq"><div class="fq-q" onclick="this.parentElement.classList.toggle('open')">Comment rejoindre une association ? <span class="fq-i">+</span></div><div class="fq-a">Rends-toi au Forum des Associations début d'année ou contacte le BDE par mail ou Instagram.</div></div>
+      <div class="fq"><div class="fq-q" onclick="this.parentElement.classList.toggle('open')">Où manger sur le campus ? <span class="fq-i">+</span></div><div class="fq-a">Resto U partenaire à 5 min : repas complets à 3,30 € avec la carte CROUS. Cafétéria au rez-de-chaussée.</div></div>
+      <div class="fq"><div class="fq-q" onclick="this.parentElement.classList.toggle('open')">Y a-t-il du wifi sur le campus ? <span class="fq-i">+</span></div><div class="fq-a">Oui ! Réseau Eduroam partout sur le campus. Connecte-toi avec ton email scolaire.</div></div>
+    </div>
+  </div>
+</div></section>
+
+<!-- ════ CONTACT ════ -->
+<section id="contact" style="background:var(--bg2)"><div class="si">
+  <div class="sl">Contact</div>
+  <h2 class="st reveal">Une question ? Une idée ?</h2>
+  <div class="cg">
+    <div>
+      <p class="sd" style="margin-bottom:1.4rem">Propose un événement, signale un problème ou partage tes idées pour améliorer la vie étudiante à Iris.</p>
+      <!-- Formulaire → redirige vers mailto: à la soumission -->
+      <form class="cf reveal" id="contactForm" onsubmit="sendContact(event)">
+        <div class="ff"><label>Nom complet</label><input type="text" id="cfName" placeholder="Marie Dupont" required></div>
+        <div class="ff"><label>Email</label><input type="email" id="cfEmail" placeholder="marie@gmail.com" required></div>
+        <div class="ff"><label>Sujet</label><input type="text" id="cfSubject" placeholder="Ex : Proposition d'événement" required></div>
+        <div class="ff"><label>Message</label><textarea id="cfMsg" placeholder="Décris ta demande ou ton idée…" required></textarea></div>
+        <button type="submit" class="btn-ac" style="width:100%;padding:.78rem;font-size:.9rem;border-radius:5px">Envoyer le message →</button>
+      </form>
+    </div>
+    <div class="ci reveal">
+      <h3>Nous trouver</h3>
+      <div class="ii"><div class="ii-ico">📍</div><div><small>Adresse</small><span>6-8 Impasse des Deux Cousins, 75017 Paris</span></div></div>
+      <div class="ii"><div class="ii-ico">📧</div><div><small>Email</small><span>contact@ecoleiris.fr</span></div></div>
+      <div class="ii"><div class="ii-ico">📞</div><div><small>Téléphone</small><span>01 44 01 86 70</span></div></div>
+      <div class="ii"><div class="ii-ico">🕐</div><div><small>Horaires</small><span>Lun – Ven : 8h30 – 18h00</span></div></div>
+      <div class="ii"><div class="ii-ico">🚨</div><div><small>Urgences</small><span>0800 235 236 (gratuit 24h/7j)</span></div></div>
+      <div style="margin-top:1.4rem;display:flex;gap:.55rem;flex-wrap:wrap">
+        <a href="https://www.instagram.com/iris_ecoles/" target="_blank" class="btn-ghost">Instagram</a>
+        <a href="https://www.linkedin.com/school/iris-ecole-superieure-d-informatique/" target="_blank" class="btn-ghost">LinkedIn</a><a href="https://www.tiktok.com/@ecoleiris" target="_blank" class="btn-ghost">TikTok</a>
+      </div>
+    </div>
+  </div>
+</div></section>
+
+<footer>
+  <div class="ft-brand"><div class="ft-logo">IRIS</div><span class="ft-name">PARIS</span></div>
+  <p>© 2025 Iris Paris · Projet BTS SIO SLAM · Groupe MediaSchool</p>
+  <div class="ft-links">
+    <a href="#accueil">Accueil</a><a href="#services">Services</a>
+    <a href="#evenements">Événements</a><a href="#contact">Contact</a><a href="#">Mentions légales</a>
+  </div>
+</footer>
+
+<!-- ════════════════════════════════════════════
+   MODAL D'AUTHENTIFICATION
+════════════════════════════════════════════ -->
+<div class="modal-ov" id="authModal">
+  <div class="modal">
+    <div class="modal-glow"></div>
+    <div class="modal-hd">
+      <div class="modal-brand"><div class="modal-logo-b">IRIS</div><span class="modal-sn">PARIS</span></div>
+      <button class="modal-close" onclick="closeAuth()">✕</button>
+      <h2 class="modal-ttl" id="mTtl">Content de te revoir</h2>
+      <p class="modal-sub" id="mSub">Connecte-toi avec ton compte Google ou Microsoft.</p>
+      <div class="modal-tabs">
+        <button class="tab-b act" id="tL" onclick="switchTab('login')">Connexion</button>
+        <button class="tab-b"     id="tR" onclick="switchTab('register')">Inscription</button>
+      </div>
+    </div>
+    <div class="modal-bd">
+      <div class="suc-ov" id="authSuc"><div class="suc-ico">🎉</div><h3 id="sucTtl">Bienvenue !</h3><p id="sucSub"></p></div>
+      <div id="authForms">
+        <!-- CONNEXION -->
+        <div id="lForm">
+          <button class="s-btn" onclick="googleAuth()">
+            <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+            Continuer avec Google
+          </button>
+          <button class="s-btn" onclick="msftAuth()">
+            <svg viewBox="0 0 24 24" width="16" height="16"><rect x="1" y="1" width="10" height="10" fill="#F25022"/><rect x="13" y="1" width="10" height="10" fill="#7FBA00"/><rect x="1" y="13" width="10" height="10" fill="#00A4EF"/><rect x="13" y="13" width="10" height="10" fill="#FFB900"/></svg>
+            Continuer avec Microsoft (MediaSchool)
+          </button>
+          <div class="divider">ou par email</div>
+          <div class="mff"><label>Email</label><input type="email" id="lEmail" placeholder="nom@gmail.com"></div>
+          <div class="mff"><label>Mot de passe</label><div class="pw-wrap"><input type="password" id="lPw" placeholder="••••••••"><button class="pw-tog" onclick="pwToggle('lPw',this)" type="button">👁</button></div><div class="ferr" id="lErr">Email ou mot de passe incorrect.</div></div>
+          <button class="btn-sub" onclick="emailLogin()">Se connecter</button>
+        </div>
+        <!-- INSCRIPTION -->
+        <div id="rForm" style="display:none">
+          <button class="s-btn" onclick="googleAuth()">
+            <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+            S'inscrire avec Google
+          </button>
+          <button class="s-btn" onclick="msftAuth()">
+            <svg viewBox="0 0 24 24" width="16" height="16"><rect x="1" y="1" width="10" height="10" fill="#F25022"/><rect x="13" y="1" width="10" height="10" fill="#7FBA00"/><rect x="1" y="13" width="10" height="10" fill="#00A4EF"/><rect x="13" y="13" width="10" height="10" fill="#FFB900"/></svg>
+            S'inscrire avec Microsoft (MediaSchool)
+          </button>
+          <div class="divider">ou manuellement</div>
+          <div class="mff-2">
+            <div class="mff"><label>Prénom</label><input type="text" id="rFirst" placeholder="Marie"></div>
+            <div class="mff"><label>Nom</label><input type="text" id="rLast" placeholder="Dupont"></div>
+          </div>
+          <div class="mff"><label>Email</label><input type="email" id="rEmail" placeholder="marie@gmail.com"><div class="ferr" id="rEE">Email requis.</div></div>
+          <div class="mff">
+            <label>Filière / Promo</label>
+            <select id="rPromo">
+              <option value="">— Choisir ta promo —</option>
+              <option value="bts-sio-decalee">BTS SIO — Rentree decalee</option>
+              <option value="bts-slam-1">BTS SIO SLAM — 1re année</option>
+              <option value="bts-slam-2">BTS SIO SLAM — 2e année</option>
+              <option value="bts-sisr-1">BTS SIO SISR — 1re année</option>
+              <option value="bts-sisr-2">BTS SIO SISR — 2e année</option>
+              <option value="bac-ciel">Bac Pro CIEL</option>
+              <option value="bachelor-dev">Bachelor Développement Web</option>
+              <option value="bachelor-cyber">Bachelor Cybersécurité</option>
+              <option value="mastere">Mastère Expert IT</option>
+            </select>
+            <div class="ferr" id="rEP">Sélectionne ta promo.</div>
+          </div>
+          <div class="mff"><label>Mot de passe</label><div class="pw-wrap"><input type="password" id="rPw" placeholder="8 caractères min."><button class="pw-tog" onclick="pwToggle('rPw',this)" type="button">👁</button></div><div class="ferr" id="rEPw">8 caractères minimum.</div></div>
+          <button class="btn-sub" onclick="emailRegister()">Créer mon compte →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+   DASHBOARD — Espace étudiant connecté
+════════════════════════════════════════════ -->
+<div id="dash">
+ <div class="dl">
+
+  <!-- ── SIDEBAR ── -->
+  <div class="ds">
+    <div class="ds-brand"><div class="ds-logo">IRIS</div><span class="ds-nm">PARIS</span></div>
+    <!-- Widget utilisateur cliquable → ouvre le profil -->
+    <div class="ds-user" onclick="navTo('profil')">
+      <img class="dua" id="sdAv" src="" alt="">
+      <div style="min-width:0"><div class="du-name" id="sdName">…</div><div class="du-promo" id="sdPromo">…</div></div>
+    </div>
+    <div class="ds-sec">
+      <div class="ds-lbl">Principal</div>
+      <div class="dni active" onclick="navTo('home')"><span class="dni-ico">🏠</span>Accueil</div>
+      <div class="dni" onclick="navTo('chat')"><span class="dni-ico">💬</span>Chat Promo</div>
+      <div class="dni" onclick="navTo('ia')"><span class="dni-ico">🤖</span>Assistant IA</div>
+      <div class="dni" onclick="navTo('events')"><span class="dni-ico">📅</span>Événements</div>
+      <div class="dni" onclick="navTo('quiz')"><span class="dni-ico">🧠</span>Quiz Étudiant</div>
+    </div>
+    <div class="ds-sec">
+      <div class="ds-lbl">Mon espace</div>
+      <div class="dni" onclick="navTo('profil')"><span class="dni-ico">👤</span>Mon Profil</div>
+      <div class="dni" onclick="navTo('notifs')"><span class="dni-ico">🔔</span>Notifications
+        <span id="nbadge" style="margin-left:auto;background:var(--ac);color:var(--bg);border-radius:100px;padding:0 .38rem;font-size:.62rem;font-weight:700">3</span>
+      </div>
+    </div>
+    <div style="margin-top:auto;padding:.7rem">
+      <div class="dni" onclick="doLogout()"><span class="dni-ico">🚪</span>Déconnexion</div>
+    </div>
+  </div>
+
+  <!-- ── CONTENU PRINCIPAL ── -->
+  <div class="dm">
+    <!-- Barre supérieure sticky -->
+    <div class="dtb">
+      <div class="dtb-ttl" id="dtbTtl">Tableau de bord</div>
+      <div style="display:flex;align-items:center;gap:.7rem">
+        <div style="font-size:.78rem;color:var(--muted)" id="dtbDate"></div>
+        <img id="topAvImg" src="" alt="" style="width:30px;height:30px;border-radius:50%;object-fit:cover;border:2px solid var(--ac);cursor:none" onclick="navTo('profil')">
+      </div>
+    </div>
+    <div class="dc">
+
+      <!-- ══ PANEL HOME ══ -->
+      <div class="panel active" id="panel-home">
+        <div class="dw" style="margin-bottom:1.4rem">
+          <h2>Bonjour, <span id="wName">…</span> 👋</h2>
+          <p>Voici ce qui se passe sur le campus aujourd'hui.</p>
+        </div>
+        <!-- 4 stats rapides -->
+        <div class="dst">
+          <div class="dsc"><div class="dsc-n" id="dsMsgs">0</div><div class="dsc-l">Messages</div></div>
+          <div class="dsc"><div class="dsc-n">6</div><div class="dsc-l">Événements</div></div>
+          <div class="dsc"><div class="dsc-n" id="dsEvJ">0</div><div class="dsc-l">Participations</div></div>
+          <div class="dsc"><div class="dsc-n" id="dsDays">1</div><div class="dsc-l">Jours sur Iris Hub</div></div>
+        </div>
+        <!-- Feed + events -->
+        <div class="dfeed">
+          <div class="fcard">
+            <div class="fcH"><span class="fcH-t">📢 Actualités</span><span style="font-size:.7rem;color:var(--muted)">Aujourd'hui</span></div>
+            <div class="fcB">
+              <div class="ai pin"><div class="ai-tag">📌 Épinglé</div><div class="ai-ttl">Inscription Hackathon ouverte !</div><div class="ai-sub">Places limitées · avant le 10 mai</div></div>
+              <div class="ai"><div class="ai-sub" style="color:var(--muted);font-size:.72rem">Il y a 2h</div><div class="ai-ttl">Forum des associations : inscriptions ouvertes.</div></div>
+              <div class="ai"><div class="ai-sub" style="color:var(--muted);font-size:.72rem">Hier</div><div class="ai-ttl">Résultats du quiz vendredi sur l'ENT.</div></div>
+            </div>
+          </div>
+          <div class="fcard">
+            <div class="fcH"><span class="fcH-t">📅 Prochains events</span><a href="#" onclick="navTo('events')" style="font-size:.7rem;color:var(--ac);text-decoration:none">Tout voir →</a></div>
+            <div class="fcB">
+              <div class="ai" style="display:flex;gap:.7rem;align-items:center"><div style="text-align:center;min-width:34px"><div style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;color:var(--ac);line-height:1">12</div><div style="font-size:.6rem;text-transform:uppercase;color:var(--muted)">Mai</div></div><div><div style="font-size:.82rem;font-weight:500">Soirée d'intégration</div><div style="font-size:.74rem;color:var(--muted)">Amphi A · 19h00</div></div></div>
+              <div class="ai" style="display:flex;gap:.7rem;align-items:center"><div style="text-align:center;min-width:34px"><div style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;color:var(--ac);line-height:1">18</div><div style="font-size:.6rem;text-transform:uppercase;color:var(--muted)">Mai</div></div><div><div style="font-size:.82rem;font-weight:500">Hackathon 24h</div><div style="font-size:.74rem;color:var(--muted)">Salles Info · 09h00</div></div></div>
+            </div>
+          </div>
+        </div>
+        <!-- ── NOUVEAUTÉS : Météo + Compte à rebours ── -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+          <!-- Météo Paris en temps réel (Open-Meteo, gratuit, sans clé) -->
+          <div class="weather-widget" id="weatherWidget">
+            <div class="w-ico" id="wIco">⏳</div>
+            <div>
+              <div class="w-temp" id="wTemp">—°C</div>
+              <div class="w-desc" id="wDesc">Chargement météo Paris…</div>
+              <div class="w-detail" id="wDetail"></div>
+            </div>
+          </div>
+          <!-- Compte à rebours vers le prochain événement -->
+          <div class="countdown-widget">
+            <div class="cw-label">Prochain événement</div>
+            <div class="cw-event">🎉 Soirée d'intégration BTS SIO</div>
+            <div class="cw-grid">
+              <div class="cw-unit"><div class="cw-num" id="cwD">--</div><div class="cw-lbl">Jours</div></div>
+              <div class="cw-unit"><div class="cw-num" id="cwH">--</div><div class="cw-lbl">Heures</div></div>
+              <div class="cw-unit"><div class="cw-num" id="cwM">--</div><div class="cw-lbl">Min</div></div>
+              <div class="cw-unit"><div class="cw-num" id="cwS">--</div><div class="cw-lbl">Sec</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ PANEL CHAT ══ -->
+      <div class="panel" id="panel-chat">
+        <div class="promo-lock" id="promoLock">🔒 Accès refusé à cette salle.</div>
+        <p style="font-size:.82rem;color:var(--muted);margin-bottom:.9rem">Chaque promo a son espace privé. Seuls les membres de la même promo peuvent lire et écrire les messages.</p>
+        <!-- Pills de sélection de promo -->
+        <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1.1rem" id="promoTabs"></div>
+        <div class="chat-wrap">
+          <div class="chat-hd">
+            <div class="chat-online"><div class="ch-dot"></div><span id="chatLabel">Sélectionne une promo</span></div>
+            <span style="font-size:.72rem;color:var(--muted)" id="chatCount"></span>
+          </div>
+          <!-- Zone de messages (vide par défaut, remplie par Firebase ou localStorage) -->
+          <div class="chat-msgs" id="chatMsgs"><div class="chat-empty">Sélectionne ta promo pour voir les messages.</div></div>
+          <div class="chat-inp-row">
+            <input class="chat-inp" id="chatInp" placeholder="Écris un message…" onkeydown="if(event.key==='Enter')sendChatMsg()">
+            <button class="chat-send" onclick="sendChatMsg()">Envoyer →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ PANEL IA ══ -->
+      <div class="panel" id="panel-ia">
+        <div class="ai-wrap">
+          <div class="ai-hd">
+            <div class="ai-av-b">AI</div>
+            <div>
+              <div style="font-weight:600;font-size:.88rem">Iris AI · Assistant Campus</div>
+              <div class="ai-status"><span style="width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block"></span>En ligne</div>
+            </div>
+          </div>
+          <!-- Suggestions rapides cliquables -->
+          <div class="ai-sugs">
+            <button class="ai-sug" onclick="askAI('Comment accéder à l\'ENT ?')">ENT</button>
+            <button class="ai-sug" onclick="askAI('Bons plans transport Paris ?')">Transport</button>
+            <button class="ai-sug" onclick="askAI('Comment s\'inscrire au hackathon ?')">Hackathon</button>
+            <button class="ai-sug" onclick="askAI('Associations à Iris ?')">Associations</button>
+            <button class="ai-sug" onclick="askAI('Où manger pas cher ?')">Manger</button>
+            <button class="ai-sug" onclick="askAI('Comment obtenir un certificat de scolarité ?')">Certificat</button>
+          </div>
+          <div class="ai-msgs" id="aiMsgs"></div>
+          <div class="ai-inp-row">
+            <input class="ai-inp" id="aiInp" placeholder="Pose ta question…" onkeydown="if(event.key==='Enter')sendAI()">
+            <button class="ai-send" onclick="sendAI()">Demander →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ PANEL EVENTS ══ -->
+      <div class="panel" id="panel-events">
+        <div class="evg">
+          <div class="evc"><div class="evc-img"><img src="https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=500&q=75" alt=""></div><div class="evc-bdy"><div class="evc-date">12 Mai · 19h00</div><div class="evc-ttl">Soirée d'intégration BTS SIO</div><div class="evc-loc">📍 Amphi A</div></div><div class="evc-ft"><span style="font-size:.73rem;color:var(--muted)">42 participants</span><button class="ev-att go" onclick="joinEv(this)">Je participe</button></div></div>
+          <div class="evc"><div class="evc-img"><img src="https://images.unsplash.com/photo-1498243691581-b145c3f54a5a?w=500&q=75" alt=""></div><div class="evc-bdy"><div class="evc-date">18 Mai · 09h00</div><div class="evc-ttl">Hackathon 24h Dev Web</div><div class="evc-loc">📍 Salles Informatique</div></div><div class="evc-ft"><span style="font-size:.73rem;color:var(--muted)">28 participants</span><button class="ev-att go" onclick="joinEv(this)">Je participe</button></div></div>
+          <div class="evc"><div class="evc-img"><img src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=500&q=75" alt=""></div><div class="evc-bdy"><div class="evc-date">24 Mai · 10h00</div><div class="evc-ttl">Forum des Associations</div><div class="evc-loc">📍 Hall Principal</div></div><div class="evc-ft"><span style="font-size:.73rem;color:var(--muted)">120 participants</span><button class="ev-att go" onclick="joinEv(this)">Je participe</button></div></div>
+          <div class="evc"><div class="evc-img"><img src="https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=500&q=75" alt=""></div><div class="evc-bdy"><div class="evc-date">15 Juin · 14h00</div><div class="evc-ttl">Tournoi FIFA inter-promos</div><div class="evc-loc">📍 Salle BDE</div></div><div class="evc-ft"><span style="font-size:.73rem;color:var(--muted)">16 participants</span><button class="ev-att go" onclick="joinEv(this)">Je participe</button></div></div>
+          <div class="evc"><div class="evc-img"><img src="https://images.unsplash.com/photo-1519750157634-b6d493a0f77c?w=500&q=75" alt=""></div><div class="evc-bdy"><div class="evc-date">28 Juin · 20h00</div><div class="evc-ttl">Iris Gala — Soirée de fin d'année</div><div class="evc-loc">📍 Rooftop Paris</div></div><div class="evc-ft"><span style="font-size:.73rem;color:var(--muted)">200 participants</span><button class="ev-att go" onclick="joinEv(this)">Je participe</button></div></div>
+          <div class="evc"><div class="evc-img"><img src="https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=500&q=75" alt=""></div><div class="evc-bdy"><div class="evc-date">5 Juin · 14h00</div><div class="evc-ttl">Workshop IA & Prompt Engineering</div><div class="evc-loc">📍 Salle B102</div></div><div class="evc-ft"><span style="font-size:.73rem;color:var(--muted)">25 participants</span><button class="ev-att go" onclick="joinEv(this)">Je participe</button></div></div>
+        </div>
+      </div>
+
+      <!-- ══ PANEL QUIZ ══ -->
+      <div class="panel" id="panel-quiz">
+        <div class="quiz-wrap">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.9rem">
+            <div>
+              <div style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:.04em">Quiz Iris 🧠</div>
+              <div style="font-size:.8rem;color:var(--muted)">Teste ta culture générale tech et vie étudiante</div>
+            </div>
+            <div class="quiz-score" id="qzScore">0 / 0</div>
+          </div>
+          <!-- Barre de progression de la question -->
+          <div class="quiz-progress"><div class="quiz-bar" id="qzBar" style="width:0%"></div></div>
+          <div class="quiz-q" id="qzQ">Chargement de la question…</div>
+          <div class="quiz-opts" id="qzOpts"></div>
+          <div class="quiz-info" id="qzInfo"></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem">
+            <button class="btn-ghost" onclick="initQuiz()" style="font-size:.8rem">🔄 Recommencer</button>
+            <button class="btn-ac" id="qzNext" onclick="nextQuestion()" style="display:none;font-size:.8rem;padding:.4rem 1rem">Question suivante →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ PANEL PROFIL ══ -->
+      <div class="panel" id="panel-profil">
+        <div class="prof-hd">
+          <img class="prof-av" id="profAvImg" src="" alt="">
+          <div>
+            <div class="prof-nm" id="profNm">…</div>
+            <div style="color:var(--muted);font-size:.82rem;margin-bottom:.4rem" id="profEmail2">…</div>
+            <div class="prof-bdg">🎓 <span id="profPromo">…</span></div>
+          </div>
+        </div>
+        <!-- Statistiques personnelles -->
+        <div class="prof-sts">
+          <div class="ps-card"><div class="ps-n" id="psMsgs">0</div><div class="ps-l">Messages</div></div>
+          <div class="ps-card"><div class="ps-n" id="psEvJ">0</div><div class="ps-l">Événements</div></div>
+          <div class="ps-card"><div class="ps-n" id="psDays2">1</div><div class="ps-l">Jours</div></div>
+        </div>
+        <div class="prof-ed">
+          <h3>✏️ Modifier mon profil</h3>
+          <!-- Sélection / upload de photo de profil -->
+          <div style="margin-bottom:1.1rem">
+            <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:.55rem">Photo de profil</div>
+            <div class="av-picker" id="avPicker"></div>
+            <input type="file" id="avUploadInput" accept="image/*" onchange="handleAvUpload(event)" style="display:none">
+          </div>
+          <!-- Sélection du thème (sombre / clair / système) -->
+          <div style="margin-bottom:1rem">
+            <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:.5rem">Thème d'affichage</div>
+            <div class="theme-grid">
+              <div class="theme-opt sel" id="th-dark"  onclick="setTheme('dark')">🌙 Sombre</div>
+              <div class="theme-opt"     id="th-light" onclick="setTheme('light')">☀️ Clair</div>
+              <div class="theme-opt"     id="th-sys"   onclick="setTheme('system')">🖥️ Système</div>
+            </div>
+          </div>
+          <!-- Sélection de la couleur d'accent -->
+          <div style="margin-bottom:1.2rem">
+            <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:.5rem">Couleur d'accent</div>
+            <div class="accent-grid">
+              <div class="accent-dot sel" id="ac-gold"  style="background:#F5C842" onclick="setAccent('gold')"  title="Or Iris"></div>
+              <div class="accent-dot"     id="ac-blue"  style="background:#378ADD" onclick="setAccent('blue')"  title="Bleu"></div>
+              <div class="accent-dot"     id="ac-teal"  style="background:#1D9E75" onclick="setAccent('teal')"  title="Teal"></div>
+            </div>
+          </div>
+          <!-- Formulaire d'édition du profil -->
+          <div class="pfg">
+            <div class="ff"><label>Prénom</label><input type="text" id="peFirst"></div>
+            <div class="ff"><label>Nom</label><input type="text" id="peLast"></div>
+          </div>
+          <div class="ff" style="margin-top:.85rem">
+            <label>Bio</label>
+            <textarea id="peBio" style="width:100%;padding:.62rem .88rem;background:var(--bg3);border:1px solid var(--bord);border-radius:5px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.84rem;min-height:76px;outline:none;resize:none;transition:border-color .22s" placeholder="Décris-toi en quelques mots…"></textarea>
+          </div>
+          <button class="btn-ac" style="margin-top:.9rem;padding:.58rem 1.3rem;font-size:.84rem;border-radius:5px" onclick="saveProfile()">Sauvegarder</button>
+        </div>
+      </div>
+
+      <!-- ══ PANEL NOTIFICATIONS ══ -->
+      <div class="panel" id="panel-notifs">
+        <div class="notif-l">
+          <div class="nitem unread"><div class="ndot"></div><div><div class="ntxt">🎉 <strong>Hackathon 24h</strong> — inscriptions ouvertes jusqu'au 10 mai !</div><div class="ntime">Il y a 2h</div></div></div>
+          <div class="nitem unread"><div class="ndot"></div><div><div class="ntxt">💬 Nouveau message dans ton chat de promo.</div><div class="ntime">Il y a 4h</div></div></div>
+          <div class="nitem unread"><div class="ndot"></div><div><div class="ntxt">📅 Rappel : Forum des Associations dans 3 jours.</div><div class="ntime">Hier</div></div></div>
+          <div class="nitem"><div class="ndot read"></div><div><div class="ntxt">✅ Ton compte Iris Hub a été créé avec succès.</div><div class="ntime">Il y a 2j</div></div></div>
+          <div class="nitem"><div class="ndot read"></div><div><div class="ntxt">🎓 Bon plan : -20% JetBrains pour les étudiants Iris.</div><div class="ntime">Il y a 3j</div></div></div>
+        </div>
+      </div>
+
+    </div><!-- /dc -->
+  </div><!-- /dm -->
+ </div><!-- /dl -->
+</div><!-- /dash -->
+
+<!-- ════════════════════════════════════════════
+   JAVASCRIPT PRINCIPAL
+   Organisé en sections thématiques pour la lisibilité
+════════════════════════════════════════════ -->
+<script>
+// ══════════════════════════════════════════
+// 1. CONSTANTES & DONNÉES STATIQUES
+// ══════════════════════════════════════════
+
+// 5 avatars par défaut générés par DiceBear (pas besoin de serveur)
+const DEFAULT_AVATARS = [
+  "https://api.dicebear.com/9.x/avataaars/svg?seed=iris1&backgroundColor=1A3A6B",
+  "https://api.dicebear.com/9.x/avataaars/svg?seed=iris2&backgroundColor=1A3A6B",
+  "https://api.dicebear.com/9.x/avataaars/svg?seed=iris3&backgroundColor=0F6E56",
+  "https://api.dicebear.com/9.x/avataaars/svg?seed=iris4&backgroundColor=533AB7",
+  "https://api.dicebear.com/9.x/avataaars/svg?seed=iris5&backgroundColor=854F0B",
+];
+
+// Correspondance id_promo → nom affiché
+const PROMO_LABELS = {
+  "bts-slam-1":    "BTS SIO — Rentree decale",
+  "bts-slam-1":    "BTS SIO SLAM — 1re année",
+  "bts-slam-2":    "BTS SIO SLAM — 2e année",
+  "bts-sisr-1":    "BTS SIO SISR — 1re année",
+  "bts-sisr-2":    "BTS SIO SISR — 2e année",
+  "bac-ciel":      "Bac Pro CIEL",
+  "bachelor-dev":  "Bachelor Dev Web",
+  "bachelor-cyber":"Bachelor Cybersécurité",
+  "mastere":       "Mastère Expert IT",
+};
+
+// Base de connaissances locale pour l'IA (fallback si API inaccessible)
+const AI_KB = {
+  ent:        "Pour l'ENT, connecte-toi sur **ent.ecoleiris.fr** avec ton email scolaire. En cas de problème, le bureau B204 peut t'aider.",
+  transport:  "Pass Navigo Étudiant ~45€/mois, Vélib' gratuit 30min, RATP tarif réduit -26 ans. La ligne 3 dessert bien le campus.",
+  hackathon:  "Le Hackathon 24h Iris est le **18 mai à 09h00** en salles informatique. Inscris-toi sur l'ENT avant le 10 mai. Équipes de 3 à 5 personnes.",
+  association:"**42 associations** à Iris : BDE, BDS, gaming, coding, musique, humanitaire. Forum le 24 mai pour toutes les rencontrer.",
+  manger:     "Resto U CROUS à 5 min : 3,30 € le repas complet. Cafétéria au RDC. Hank Burger et Saigon Kitchen sont recommandés à proximité.",
+  certificat: "Ton certificat de scolarité est sur l'ENT → **Mes documents**. Téléchargeable en PDF 24h/7j.",
+  wifi:       "Réseau **Eduroam** sur tout le campus. Connecte-toi avec ton email scolaire — configuration automatique ensuite.",
+  logement:   "CROUS résidences U, APL aide au logement, Lokaviz pour les annonces. La colocation dans le 17e est recommandée.",
+};
+
+// Questions du quiz (10 questions tech + vie étudiante)
+const QUIZ_QUESTIONS = [
+  { q:"Quel réseau wifi est disponible sur le campus Iris Paris ?", opts:["Eduroam","Campus-WiFi","Iris-Net","Orange WiFi"], a:0, exp:"Eduroam est le réseau universitaire standard." },
+  { q:"Quel est le prix d'un repas au restaurant universitaire CROUS ?", opts:["1,50 €","3,30 €","5,00 €","7,50 €"], a:1, exp:"Le repas CROUS est à 3,30 € avec la carte étudiante." },
+  { q:"Que signifie l'acronyme BTS SIO SLAM ?", opts:["Solutions Logicielles et Applications Métiers","Systèmes et Logiciels Avancés Multimédia","Sécurité des Logiciels et Applications Mobiles","Services Logiciels et Architectures Mobiles"], a:0, exp:"SLAM = Solutions Logicielles et Applications Métiers." },
+  { q:"Quel outil de versionning est offert gratuitement aux étudiants via GitHub Student Pack ?", opts:["GitLab Premium","GitHub Pro","Bitbucket Cloud","Azure DevOps"], a:1, exp:"GitHub Pro est inclus dans le GitHub Student Developer Pack." },
+  { q:"Quelle est la signature visuelle du logo Iris Paris ?", opts:["Carré rouge","Cartouche jaune sur fond bleu marine","Triangle vert","Cercle blanc"], a:1, exp:"Le logo IRIS est une cartouche jaune sur fond bleu marine." },
+  { q:"Quel est le nom du framework CSS utility-first le plus populaire ?", opts:["Bootstrap","Foundation","Tailwind CSS","Bulma"], a:2, exp:"Tailwind CSS est le framework utility-first dominant en 2025." },
+  { q:"Quel protocole sécurise les communications HTTPS ?", opts:["HTTP/2","SSL/TLS","FTP","SSH"], a:1, exp:"HTTPS repose sur SSL/TLS pour chiffrer les échanges." },
+  { q:"À Paris, à quel âge cesse-t-on de bénéficier du tarif RATP réduit jeune ?", opts:["18 ans","21 ans","25 ans","26 ans"], a:3, exp:"Le tarif réduit RATP s'applique jusqu'à 25 ans inclus (catégorie -26 ans)." },
+  { q:"Quel est le groupe auquel appartient l'école Iris Paris ?", opts:["IONIS Education","EduGroup","MediaSchool","Galileo Global Education"], a:2, exp:"Iris Paris fait partie du groupe MediaSchool." },
+  { q:"Quel service permet d'obtenir l'APL (aide au logement) ?", opts:["CAF","CPAM","Pôle Emploi","URSSAF"], a:0, exp:"L'APL est versée par la CAF (Caisse d'Allocations Familiales)." },
+];
+
+// ══════════════════════════════════════════
+// 2. BASE DE DONNÉES LOCALE (localStorage)
+// ══════════════════════════════════════════
+const DB = {
+  _get: k => { try { return JSON.parse(localStorage.getItem(k)) } catch { return null } },
+  _set: (k,v) => localStorage.setItem(k, JSON.stringify(v)),
+  get users()   { return this._get('iris_v4_users') || [] },
+  set users(v)  { this._set('iris_v4_users', v) },
+  get session() { return this._get('iris_v4_sess') },
+  set session(v){ v ? this._set('iris_v4_sess', v) : localStorage.removeItem('iris_v4_sess') },
+  get prefs()   { return this._get('iris_v4_prefs') || { theme:'dark', accent:'gold' } },
+  set prefs(v)  { this._set('iris_v4_prefs', v) },
+  saveUser(u)   { const us=this.users; const i=us.findIndex(x=>x.email===u.email); i>=0?us[i]=u:us.push(u); this.users=us; },
+  getUser(email){ return this.users.find(u=>u.email===email)||null },
+};
+
+// ══════════════════════════════════════════
+// 3. ÉTAT GLOBAL
+// ══════════════════════════════════════════
+let currentUser   = null;   // Utilisateur connecté
+let activePromo   = null;   // Salle de chat active
+let fbUnsubscribe = null;   // Interval de polling localStorage
+let quizState     = { idx:0, score:0, answered:false }; // État du quiz
+
+// ══════════════════════════════════════════
+// 4. LOADER DE DÉMARRAGE
+// ══════════════════════════════════════════
+let lpct = 0;
+const lfEl = document.getElementById('lf'), lpEl = document.getElementById('lp');
+const li = setInterval(() => {
+  lpct += Math.random() * 16;
+  if (lpct >= 100) {
+    lpct = 100; clearInterval(li);
+    setTimeout(() => document.getElementById('loader').classList.add('out'), 320);
+  }
+  lfEl.style.width = lpct + '%';
+  lpEl.textContent = Math.floor(lpct) + '%';
+}, 65);
+
+// ══════════════════════════════════════════
+// 5. CURSEUR PERSONNALISÉ
+// ══════════════════════════════════════════
+const curEl = document.getElementById('cur'), curR = document.getElementById('curR');
+let mx=0, my=0, rx=0, ry=0;
+document.addEventListener('mousemove', e => {
+  mx=e.clientX; my=e.clientY;
+  curEl.style.transform = `translate(${mx-4.5}px,${my-4.5}px)`;
+});
+// L'anneau suit avec un léger décalage (interpolation)
+(function animRing() {
+  rx += (mx-rx) * .1; ry += (my-ry) * .1;
+  curR.style.transform = `translate(${rx-15}px,${ry-15}px)`;
+  requestAnimationFrame(animRing);
+})();
+// Agrandit le curseur sur les éléments cliquables
+document.querySelectorAll('a,button,.fc,.ev,.pc,.tc,.fq-q,.dni,.evc,.ds-user,.qopt').forEach(el => {
+  el.addEventListener('mouseenter', () => curEl.style.transform += ' scale(2.5)');
+  el.addEventListener('mouseleave', () => {});
+});
+
+// ══════════════════════════════════════════
+// 6. NAVIGATION & SCROLL
+// ══════════════════════════════════════════
+window.addEventListener('scroll', () => {
+  document.getElementById('nav').classList.toggle('scrolled', scrollY > 55);
+});
+// Révélation des éléments au scroll (IntersectionObserver)
+const revObs = new IntersectionObserver(ents => {
+  ents.forEach(e => { if(e.isIntersecting) { e.target.classList.add('in'); revObs.unobserve(e.target); } });
+}, { threshold:.08 });
+document.querySelectorAll('.reveal').forEach(el => revObs.observe(el));
+
+// Marquee : dupliquer le contenu pour l'animation infinie
+const mt = document.getElementById('mt'); mt.innerHTML += mt.innerHTML;
+
+// ══════════════════════════════════════════
+// 7. UTILITAIRES
+// ══════════════════════════════════════════
+
+// Effet de lumière sur les cartes de services (suit la souris)
+function glowCard(el, e) {
+  const r = el.getBoundingClientRect();
+  el.style.setProperty('--mx', ((e.clientX-r.left)/r.width*100)+'%');
+  el.style.setProperty('--my', ((e.clientY-r.top)/r.height*100)+'%');
+}
+
+// Fermer le menu mobile
+function closeMob() { document.getElementById('mobMenu').classList.remove('open'); }
+
+// Toast (notification temporaire)
+function toast(msg, ms=3200) {
+  const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('show'), ms);
+}
+
+// Échapper le HTML pour éviter les injections XSS dans le chat
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ══════════════════════════════════════════
+// 8. THÈMES (sombre / clair / couleur d'accent)
+// ══════════════════════════════════════════
+
+// Appliquer un thème sombre/clair
+function setTheme(t) {
+  const root = document.documentElement;
+  if (t === 'system') {
+    t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  root.setAttribute('data-theme', t);
+  // Mettre à jour les boutons du sélecteur
+  ['dark','light','sys'].forEach(k => {
+    const el = document.getElementById('th-'+k);
+    if (el) el.classList.toggle('sel', k === t || (k==='sys' && false));
+  });
+  // Sauvegarder la préférence
+  const p = DB.prefs; p.theme = t; DB.prefs = p;
+  if (currentUser) { const u=DB.getUser(currentUser.email); if(u){u.theme=t;DB.saveUser(u);} }
+}
+
+// Appliquer une couleur d'accent (or / bleu / teal)
+function setAccent(a) {
+  document.documentElement.setAttribute('data-accent', a);
+  ['gold','blue','teal'].forEach(k => {
+    const el = document.getElementById('ac-'+k);
+    if (el) el.classList.toggle('sel', k === a);
+  });
+  const p = DB.prefs; p.accent = a; DB.prefs = p;
+  if (currentUser) { const u=DB.getUser(currentUser.email); if(u){u.accent=a;DB.saveUser(u);} }
+}
+
+// Charger les préférences sauvegardées
+function loadPrefs(user) {
+  const p = DB.prefs;
+  const theme  = user?.theme  || p.theme  || 'dark';
+  const accent = user?.accent || p.accent || 'gold';
+  setTheme(theme); setAccent(accent);
+  // Mettre à jour les sélecteurs visuels du profil
+  const thKey = theme === 'light' ? 'light' : 'dark';
+  ['dark','light','sys'].forEach(k => { const el=document.getElementById('th-'+k); if(el) el.classList.toggle('sel',k===thKey); });
+  ['gold','blue','teal'].forEach(k => { const el=document.getElementById('ac-'+k); if(el) el.classList.toggle('sel',k===accent); });
+}
+
+// ══════════════════════════════════════════
+// 9. FORMULAIRE DE CONTACT → MAILTO
+// ══════════════════════════════════════════
+function sendContact(e) {
+  e.preventDefault();
+  const name    = document.getElementById('cfName').value.trim();
+  const email   = document.getElementById('cfEmail').value.trim();
+  const subject = document.getElementById('cfSubject').value.trim();
+  const body    = document.getElementById('cfMsg').value.trim();
+  // Construire l'URL mailto et ouvrir le client mail
+  const mailto = `mailto:${CFG.CONTACT_EMAIL}?subject=${encodeURIComponent('[Iris Hub] '+subject)}&body=${encodeURIComponent(`Nom: ${name}\nEmail: ${email}\n\n${body}`)}`;
+  window.location.href = mailto;
+  toast('📬 Ouverture de ton client mail…');
+  document.getElementById('contactForm').reset();
+}
+
+// ══════════════════════════════════════════
+// 10. AUTHENTIFICATION
+// ══════════════════════════════════════════
+
+// Ouvrir la modal d'auth (login ou register)
+function openAuth(tab='login') {
+  document.getElementById('authModal').classList.add('active');
+  document.getElementById('authSuc').style.display = 'none';
+  document.getElementById('authForms').style.display = 'block';
+  switchTab(tab);
+  document.body.style.overflow = 'hidden';
+}
+function closeAuth() {
+  document.getElementById('authModal').classList.remove('active');
+  document.body.style.overflow = '';
+}
+// Fermer avec Échap ou clic en dehors du modal
+document.getElementById('authModal').addEventListener('click', e => { if(e.target===e.currentTarget) closeAuth(); });
+document.addEventListener('keydown', e => { if(e.key==='Escape') closeAuth(); });
+
+// Basculer entre les onglets Connexion / Inscription
+function switchTab(t) {
+  const isL = t === 'login';
+  document.getElementById('tL').classList.toggle('act', isL);
+  document.getElementById('tR').classList.toggle('act', !isL);
+  document.getElementById('lForm').style.display = isL ? 'block' : 'none';
+  document.getElementById('rForm').style.display = isL ? 'none'  : 'block';
+  document.getElementById('mTtl').textContent = isL ? 'Content de te revoir'  : 'Rejoins Iris Paris';
+  document.getElementById('mSub').textContent = isL ? 'Connecte-toi avec Google ou Microsoft.' : 'Crée ton compte en 30 secondes.';
+}
+
+// Bouton œil pour afficher/masquer le mot de passe
+function pwToggle(id, btn) {
+  const i = document.getElementById(id);
+  i.type = i.type === 'password' ? 'text' : 'password';
+  btn.textContent = i.type === 'password' ? '👁' : '🙈';
+}
+
+// ── Google OAuth (popup réelle via google.accounts.oauth2) ──
+function googleAuth() {
+  if (CFG.GOOGLE_CLIENT_ID.includes('VOTRE')) { toast('⚙️ Configure GOOGLE_CLIENT_ID dans CFG.'); return; }
+  if (!window.google) { toast('⏳ Chargement de Google…'); return; }
+  google.accounts.oauth2.initTokenClient({
+    client_id: CFG.GOOGLE_CLIENT_ID,
+    scope: 'profile email',
+    callback: async resp => {
+      if (resp.error) { toast('❌ Connexion Google annulée.'); return; }
+      // Récupérer le profil depuis l'API Google
+      const p = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: 'Bearer ' + resp.access_token }
+      }).then(r => r.json());
+      handleSocialLogin({ email:p.email, first:p.given_name||p.name?.split(' ')[0]||'Utilisateur',
+        last:p.family_name||'', avatar:p.picture||DEFAULT_AVATARS[0], provider:'google' });
+    }
+  }).requestAccessToken();
+}
+
+// ── Microsoft MSAL (popup réelle) ──
+let msalInst = null;
+function getMSAL() {
+  if (!msalInst && window.msal) {
+    msalInst = new msal.PublicClientApplication({
+      auth: { clientId:CFG.MSFT_CLIENT_ID, authority:'https://login.microsoftonline.com/common', redirectUri:window.location.origin },
+      cache: { cacheLocation:'sessionStorage' },
+    });
+  }
+  return msalInst;
+}
+async function msftAuth() {
+  if (CFG.MSFT_CLIENT_ID.includes('VOTRE')) { toast('⚙️ Configure MSFT_CLIENT_ID dans CFG.'); return; }
+  try {
+    const resp = await getMSAL().loginPopup({ scopes:['User.Read'] });
+    handleSocialLogin({ email:resp.account.username, first:resp.account.name?.split(' ')[0]||'Étudiant',
+      last:resp.account.name?.split(' ').slice(1).join(' ')||'', avatar:DEFAULT_AVATARS[0], provider:'microsoft' });
+  } catch { toast('❌ Connexion Microsoft annulée.'); }
+}
+
+// Traiter la connexion sociale (Google ou Microsoft)
+function handleSocialLogin(profile) {
+  let user = DB.getUser(profile.email);
+  if (!user) {
+    // Nouvel utilisateur : créer le compte et demander la promo
+    user = { ...profile, promo:'', pw:'', joined:Date.now(), msgCount:0, eventsJoined:0, bio:'' };
+    DB.saveUser(user); DB.session = user;
+    closeAuth(); promptPromoSelect(user); return;
+  }
+  DB.session = user;
+  showAuthSuccess(`Bon retour, ${user.first} ! 👋`, '');
+  setTimeout(() => { closeAuth(); openDash(user); }, 1500);
+}
+
+// Demander la promo lors d'une première connexion sociale
+function promptPromoSelect(user) {
+  const opts = Object.entries(PROMO_LABELS).map(([v,l]) => `<option value="${v}">${l}</option>`).join('');
+  const el = document.createElement('div');
+  el.style.cssText = 'position:fixed;inset:0;background:rgba(5,9,18,.9);z-index:800;display:flex;align-items:center;justify-content:center;padding:1rem';
+  el.innerHTML = `<div style="background:var(--bg2);border:1px solid var(--bord);border-radius:10px;padding:2rem;width:min(420px,100%)">
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;margin-bottom:.3rem">Dernière étape !</div>
+    <p style="font-size:.85rem;color:var(--muted);margin-bottom:1.4rem">Choisis ta filière pour rejoindre le bon chat de promo.</p>
+    <select id="_ps" style="width:100%;padding:.65rem;background:var(--bg3);border:1px solid var(--bord);border-radius:5px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.86rem;outline:none;margin-bottom:1rem;-webkit-appearance:none">
+      <option value="">— Sélectionne ta promo —</option>${opts}
+    </select>
+    <button style="width:100%;padding:.72rem;background:var(--ac);border:none;color:var(--bg);font-weight:700;border-radius:5px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:.9rem"
+      onclick="const p=document.getElementById('_ps').value;if(!p){alert('Choisis ta promo !');return;}const u=${JSON.stringify(user)};u.promo=p;window._finishSocial(u,this.closest('div').parentElement)">
+      Rejoindre Iris Hub →
+    </button>
+  </div>`;
+  document.body.appendChild(el);
+  window._finishSocial = (user, overlay) => {
+    DB.saveUser(user); DB.session = user; overlay.remove();
+    showAuthSuccess(`Bienvenue, ${user.first} ! 🎉`, 'Ton compte Iris Hub est prêt !');
+    setTimeout(() => openDash(user), 1500);
+  };
+}
+
+// Connexion par email / mot de passe
+function emailLogin() {
+  const email = document.getElementById('lEmail').value.trim().toLowerCase();
+  const pw    = document.getElementById('lPw').value;
+  const user  = DB.getUser(email);
+  if (!user || user.pw !== pw) { document.getElementById('lErr').style.display = 'block'; return; }
+  document.getElementById('lErr').style.display = 'none';
+  DB.session = user;
+  showAuthSuccess(`Bon retour, ${user.first} ! 👋`, '');
+  setTimeout(() => { closeAuth(); openDash(user); }, 1400);
+}
+
+// Inscription par email / mot de passe
+function emailRegister() {
+  const first = document.getElementById('rFirst').value.trim();
+  const last  = document.getElementById('rLast').value.trim();
+  const email = document.getElementById('rEmail').value.trim().toLowerCase();
+  const promo = document.getElementById('rPromo').value;
+  const pw    = document.getElementById('rPw').value;
+  let ok = true;
+  // Validation des champs
+  if (!email.includes('@')) { document.getElementById('rEE').style.display='block'; ok=false; } else document.getElementById('rEE').style.display='none';
+  if (!promo)               { document.getElementById('rEP').style.display='block'; ok=false; } else document.getElementById('rEP').style.display='none';
+  if (pw.length < 8)        { document.getElementById('rEPw').style.display='block'; ok=false; } else document.getElementById('rEPw').style.display='none';
+  if (!ok) return;
+  if (DB.getUser(email)) { toast('⚠️ Compte existant. Connecte-toi.'); switchTab('login'); return; }
+  const user = { email, first:first||email.split('@')[0], last, promo, pw,
+    avatar:DEFAULT_AVATARS[0], provider:'email', joined:Date.now(), msgCount:0, eventsJoined:0, bio:'' };
+  DB.saveUser(user); DB.session = user;
+  showAuthSuccess(`Bienvenue, ${user.first} ! 🎉`, 'Ton compte Iris Hub est prêt !');
+  setTimeout(() => { closeAuth(); openDash(user); }, 1800);
+}
+
+// Afficher l'écran de succès dans le modal
+function showAuthSuccess(title, sub) {
+  document.getElementById('authForms').style.display = 'none';
+  document.getElementById('authSuc').style.display   = 'block';
+  document.getElementById('sucTtl').textContent = title;
+  document.getElementById('sucSub').textContent = sub;
+}
+
+// ══════════════════════════════════════════
+// 11. DASHBOARD
+// ══════════════════════════════════════════
+
+// Ouvrir le dashboard avec les données de l'utilisateur
+function openDash(user) {
+  currentUser = user;
+  document.getElementById('dash').style.display = 'block';
+  document.body.style.overflow = 'hidden';
+
+  // Remplir les éléments avec les infos utilisateur
+  const av = user.avatar || DEFAULT_AVATARS[0];
+  ['sdAv','topAvImg','profAvImg'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.src = av;
+  });
+  const fullName = user.first + (user.last ? ' '+user.last : '');
+  document.getElementById('sdName').textContent    = fullName;
+  document.getElementById('sdPromo').textContent   = PROMO_LABELS[user.promo] || user.promo || '—';
+  document.getElementById('wName').textContent     = user.first;
+  document.getElementById('profNm').textContent    = fullName;
+  document.getElementById('profEmail2').textContent= user.email;
+  document.getElementById('profPromo').textContent = PROMO_LABELS[user.promo] || user.promo || '—';
+  document.getElementById('peFirst').value         = user.first;
+  document.getElementById('peLast').value          = user.last || '';
+  document.getElementById('peBio').value           = user.bio  || '';
+  document.getElementById('dtbDate').textContent   = new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+
+  // Calculer les statistiques
+  const days = Math.max(1, Math.floor((Date.now()-user.joined)/86400000)+1);
+  document.getElementById('dsDays').textContent  = days;
+  document.getElementById('psDays2').textContent = days;
+  document.getElementById('dsMsgs').textContent  = user.msgCount    || 0;
+  document.getElementById('psMsgs').textContent  = user.msgCount    || 0;
+  document.getElementById('dsEvJ').textContent   = user.eventsJoined|| 0;
+  document.getElementById('psEvJ').textContent   = user.eventsJoined|| 0;
+
+  // Initialiser les composants
+  buildAvatarPicker(user);
+  buildPromoTabs(user);
+  loadPrefs(user);
+  initAI();
+  initQuiz();
+  initWeather();
+  initCountdown();
+
+  navTo('home');
+}
+
+// Déconnexion
+function doLogout() {
+  currentUser = null; DB.session = null;
+  if (fbUnsubscribe) { clearInterval(fbUnsubscribe); fbUnsubscribe = null; }
+  document.getElementById('dash').style.display = 'none';
+  document.body.style.overflow = '';
+  toast('👋 Déconnecté avec succès.');
+}
+
+// Naviguer entre les panels du dashboard
+function navTo(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-'+name)?.classList.add('active');
+  // Mettre à jour le titre de la topbar
+  const labels = {home:'Tableau de bord',chat:'Chat Promo',ia:'Assistant IA Iris',
+    events:'Événements',quiz:'Quiz Étudiant 🧠',profil:'Mon Profil',notifs:'Notifications'};
+  document.getElementById('dtbTtl').textContent = labels[name] || name;
+  // Mettre à jour l'item actif dans la sidebar
+  document.querySelectorAll('.dni').forEach(i => i.classList.remove('active'));
+  const keywords = {home:'accueil',chat:'chat',ia:'ia',events:'événements',quiz:'quiz',profil:'profil',notifs:'notif'};
+  document.querySelectorAll('.dni').forEach(i => {
+    if (i.textContent.toLowerCase().includes(keywords[name]||name.slice(0,4).toLowerCase())) i.classList.add('active');
+  });
+  if (name === 'notifs') document.getElementById('nbadge').style.display = 'none';
+}
+
+// ══════════════════════════════════════════
+// 12. AVATARS (sélection + upload)
+// ══════════════════════════════════════════
+function buildAvatarPicker(user) {
+  const el = document.getElementById('avPicker');
+  el.innerHTML = '';
+  // Afficher les 5 avatars par défaut
+  DEFAULT_AVATARS.forEach(src => {
+    const img = document.createElement('img');
+    img.src = src; img.className = 'av-opt';
+    if (src === user.avatar) img.classList.add('sel');
+    img.onclick = () => selectAvatar(src);
+    el.appendChild(img);
+  });
+  // Bouton d'upload de photo personnalisée
+  const up = document.createElement('div');
+  up.className = 'av-upload-btn'; up.textContent = '📷';
+  up.onclick = () => document.getElementById('avUploadInput').click();
+  el.appendChild(up);
+  // Si l'utilisateur a une photo custom (base64), l'afficher en premier
+  if (user.avatar && !DEFAULT_AVATARS.includes(user.avatar) && user.avatar.startsWith('data:')) {
+    const img = document.createElement('img');
+    img.src = user.avatar; img.className = 'av-opt sel';
+    img.onclick = () => selectAvatar(user.avatar);
+    el.insertBefore(img, el.firstChild);
+  }
+}
+
+// Sélectionner un avatar (met à jour partout)
+function selectAvatar(src) {
+  document.querySelectorAll('.av-opt').forEach(i => {
+    i.classList.toggle('sel', i.src === src || (i.src && i.src.endsWith(src)));
+  });
+  if (!currentUser) return;
+  currentUser.avatar = src;
+  DB.saveUser(currentUser); DB.session = currentUser;
+  ['sdAv','topAvImg','profAvImg'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.src = src;
+  });
+}
+
+// Gérer l'upload d'une photo personnalisée
+function handleAvUpload(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const dataUrl = ev.target.result;
+    currentUser.avatar = dataUrl;
+    DB.saveUser(currentUser); DB.session = currentUser;
+    buildAvatarPicker(currentUser);
+    ['sdAv','topAvImg','profAvImg'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.src = dataUrl;
+    });
+    toast('✅ Photo de profil mise à jour !');
+  };
+  reader.readAsDataURL(file);
+}
+
+// ══════════════════════════════════════════
+// 13. CHAT DE PROMO (verrou par promotion)
+// ══════════════════════════════════════════
+function buildPromoTabs(user) {
+  const el = document.getElementById('promoTabs');
+  el.innerHTML = '';
+  Object.keys(PROMO_LABELS).forEach(pId => {
+    const btn = document.createElement('button');
+    btn.style.cssText = 'padding:.3rem .8rem;border-radius:100px;border:1px solid var(--bord);font-size:.75rem;cursor:pointer;transition:all .2s;background:transparent;color:var(--muted);font-family:"DM Sans",sans-serif';
+    btn.textContent = PROMO_LABELS[pId];
+    // Mettre en valeur la promo de l'utilisateur
+    if (user.promo === pId) btn.style.cssText += ';background:rgba(245,200,66,.12);border-color:var(--ac);color:var(--ac)';
+    btn.onclick = () => enterChat(pId, user);
+    el.appendChild(btn);
+  });
+}
+
+// Entrer dans une salle de chat (avec vérification de promo)
+function enterChat(promoId, user) {
+  const lock = document.getElementById('promoLock');
+  // VERROU : accès refusé si pas la bonne promo
+  if (user.promo !== promoId) {
+    lock.style.display = 'block';
+    lock.textContent = `🔒 Accès refusé — ce chat est réservé à "${PROMO_LABELS[promoId]}".`;
+    document.getElementById('chatMsgs').innerHTML = '<div class="chat-empty">Tu ne fais pas partie de cette promo.</div>';
+    document.getElementById('chatLabel').textContent = PROMO_LABELS[promoId];
+    return;
+  }
+  lock.style.display = 'none';
+  activePromo = promoId;
+  document.getElementById('chatLabel').textContent = '💬 ' + PROMO_LABELS[promoId];
+  document.getElementById('chatCount').textContent = (Math.floor(Math.random()*15)+3) + ' membres en ligne';
+  // Choisir Firebase (temps réel) ou localStorage (fallback)
+  if (window._fbReady) {
+    window._fbListen(promoId, msgs => renderMsgs(msgs));
+  } else {
+    listenLocal(promoId);
+  }
+}
+
+// Fallback localStorage (polling toutes les 2s, partage entre onglets)
+function listenLocal(pId) {
+  renderMsgs(getLocalMsgs(pId));
+  if (fbUnsubscribe) clearInterval(fbUnsubscribe);
+  fbUnsubscribe = setInterval(() => { if(activePromo===pId) renderMsgs(getLocalMsgs(pId)); }, 2000);
+}
+function getLocalMsgs(pId) { try { return JSON.parse(localStorage.getItem('iris_chat_'+pId)||'[]'); } catch { return []; } }
+function saveLocalMsg(pId, msg) {
+  const msgs = getLocalMsgs(pId); msgs.push(msg);
+  localStorage.setItem('iris_chat_'+pId, JSON.stringify(msgs));
+  window.dispatchEvent(new StorageEvent('storage', { key:'iris_chat_'+pId }));
+}
+// Réagir aux changements dans d'autres onglets
+window.addEventListener('storage', e => {
+  if (activePromo && e.key === 'iris_chat_'+activePromo) renderMsgs(getLocalMsgs(activePromo));
+});
+
+// Rendre les messages dans la zone de chat
+function renderMsgs(msgs) {
+  const el = document.getElementById('chatMsgs');
+  const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+  if (!msgs || msgs.length === 0) {
+    el.innerHTML = '<div class="chat-empty">Aucun message pour l\'instant. Sois le premier à écrire ! 👋</div>';
+    return;
+  }
+  el.innerHTML = msgs.map(m => {
+    const isMe = m.email === currentUser?.email;
+    const av   = m.avatar || DEFAULT_AVATARS[0];
+    const time = m.ts ? new Date(m.ts).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) : (m.time||'');
+    // Afficher les réactions emoji (stockées dans m.reactions = { emoji: [emails] })
+    const reactions = m.reactions ? Object.entries(m.reactions).map(([emoji, users]) => {
+      const mine = users.includes(currentUser?.email||'');
+      return `<span class="react-pill ${mine?'mine':''}" onclick="addReaction('${esc(m.id||'')}','${emoji}')">${emoji} ${users.length}</span>`;
+    }).join('') : '';
+    return `<div class="cmsg ${isMe?'me':'other'}" data-mid="${esc(m.id||'')}">
+      <img class="cm-av" src="${esc(av)}" alt="" onerror="this.src='${DEFAULT_AVATARS[0]}'">
+      <div class="cm-body">
+        <div class="cm-meta">${!isMe?`<span class="cm-name">${esc(m.name||'Étudiant')}</span>`:''}${time}</div>
+        <div class="cm-bub">${esc(m.text||m.t||'')}</div>
+        ${reactions ? `<div class="msg-reactions">${reactions}</div>` : ''}
+      </div>
+      <div class="emoji-picker-wrap">
+        <div class="emoji-picker">
+          ${['👍','❤️','😂','🔥','👏','🤔'].map(e=>`<button class="e-btn" onclick="addReaction('${esc(m.id||'')}','${e}')">  ${e}</button>`).join('')}
+        </div>
+      </div>
+      <span class="react-trigger" onclick="toggleEmojiPicker(this)">😊 +</span>
+    </div>`;
+  }).join('');
+  if (atBottom) el.scrollTop = el.scrollHeight;
+}
+
+// Envoyer un message dans le chat
+function sendChatMsg() {
+  const inp  = document.getElementById('chatInp');
+  const text = inp.value.trim();
+  if (!text || !activePromo || !currentUser) { if(!currentUser) toast('Connecte-toi !'); return; }
+  if (currentUser.promo !== activePromo) { toast('🔒 Tu ne peux écrire que dans ta propre promo.'); return; }
+  const msg = { email:currentUser.email, name:currentUser.first+(currentUser.last?' '+currentUser.last:''),
+    avatar:currentUser.avatar||DEFAULT_AVATARS[0], text, ts:Date.now() };
+  if (window._fbReady) {
+    window._fbPush(activePromo, msg).catch(() => { saveLocalMsg(activePromo, msg); renderMsgs(getLocalMsgs(activePromo)); });
+  } else {
+    // Ajouter un id local pour les réactions
+    msg.id = 'local_' + Date.now();
+    saveLocalMsg(activePromo, msg); renderMsgs(getLocalMsgs(activePromo));
+  }
+  inp.value = '';
+  // Incrémenter le compteur de messages
+  const u = DB.getUser(currentUser.email);
+  if (u) { u.msgCount=(u.msgCount||0)+1; DB.saveUser(u); DB.session=u; currentUser=u;
+    document.getElementById('dsMsgs').textContent = u.msgCount;
+    document.getElementById('psMsgs').textContent = u.msgCount; }
+}
+
+// Afficher/masquer le sélecteur d'emoji d'un message
+function toggleEmojiPicker(triggerEl) {
+  const wrap = triggerEl.parentElement.querySelector('.emoji-picker-wrap');
+  if (wrap) wrap.style.display = wrap.style.display === 'block' ? 'none' : 'block';
+}
+
+// Ajouter une réaction emoji à un message (localStorage seulement pour l'instant)
+function addReaction(msgId, emoji) {
+  if (!msgId || !activePromo || !currentUser) return;
+  const msgs = getLocalMsgs(activePromo);
+  const msg  = msgs.find(m => m.id === msgId); if (!msg) return;
+  if (!msg.reactions) msg.reactions = {};
+  if (!msg.reactions[emoji]) msg.reactions[emoji] = [];
+  const idx = msg.reactions[emoji].indexOf(currentUser.email);
+  if (idx >= 0) msg.reactions[emoji].splice(idx,1); // toggle off
+  else msg.reactions[emoji].push(currentUser.email); // toggle on
+  if (msg.reactions[emoji].length === 0) delete msg.reactions[emoji];
+  localStorage.setItem('iris_chat_'+activePromo, JSON.stringify(msgs));
+  renderMsgs(msgs);
+}
+
+// ══════════════════════════════════════════
+// 14. ASSISTANT IA
+// ══════════════════════════════════════════
+function initAI() {
+  const el = document.getElementById('aiMsgs');
+  el.innerHTML = `<div class="ai-msg iris"><div class="aim-av bot">AI</div>
+    <div class="aim-bub">Bonjour ! 👋 Je suis <strong>Iris AI</strong>.<br>
+    Pose-moi n'importe quelle question sur la vie étudiante à Iris !</div></div>`;
+}
+
+function askAI(q) { document.getElementById('aiInp').value = q; sendAI(); }
+
+async function sendAI() {
+  const inp = document.getElementById('aiInp');
+  const q   = inp.value.trim(); if (!q) return;
+  const el  = document.getElementById('aiMsgs');
+  const uAv = (currentUser?.first||'M')[0];
+  // Afficher le message de l'utilisateur
+  el.innerHTML += `<div class="ai-msg user"><div class="aim-av user">${esc(uAv)}</div><div class="aim-bub">${esc(q)}</div></div>`;
+  inp.value = ''; el.scrollTop = el.scrollHeight;
+  // Indicateur de chargement
+  const tid = 'ty'+Date.now();
+  el.innerHTML += `<div class="ai-msg iris" id="${tid}"><div class="aim-av bot">AI</div>
+    <div class="aim-bub"><span class="ai-dot"></span><span class="ai-dot"></span><span class="ai-dot"></span></div></div>`;
+  el.scrollTop = el.scrollHeight;
+  let answer = '';
+  // Essayer l'API Claude (si clé configurée ou via proxy)
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:350,
+        system:"Tu es Iris AI, l'assistant de la plateforme étudiante Iris Paris (informatique, numérique). Réponds en français, en 2-4 phrases, ton décontracté et professionnel. Aide sur ENT, associations, logement, transport, bons plans, événements.",
+        messages:[{role:'user',content:q}] }),
+    });
+    if (res.ok) { const d=await res.json(); answer=d.content?.[0]?.text||''; }
+  } catch {}
+  // Fallback sur la base de connaissances locale
+  if (!answer) {
+    await new Promise(r=>setTimeout(r,900));
+    const ql = q.toLowerCase();
+    if (ql.includes('ent')||ql.includes('portail'))           answer = AI_KB.ent;
+    else if (ql.includes('transport')||ql.includes('métro'))  answer = AI_KB.transport;
+    else if (ql.includes('hackathon'))                        answer = AI_KB.hackathon;
+    else if (ql.includes('association')||ql.includes('bde'))  answer = AI_KB.association;
+    else if (ql.includes('manger')||ql.includes('cantine'))   answer = AI_KB.manger;
+    else if (ql.includes('certificat'))                       answer = AI_KB.certificat;
+    else if (ql.includes('wifi')||ql.includes('internet'))    answer = AI_KB.wifi;
+    else if (ql.includes('logement')||ql.includes('coloc'))   answer = AI_KB.logement;
+    else answer = "Je n'ai pas d'info précise sur ce sujet. Contacte l'administration via le formulaire ou passe au bureau B204. 😊";
+  }
+  document.getElementById(tid)?.remove();
+  el.innerHTML += `<div class="ai-msg iris"><div class="aim-av bot">AI</div>
+    <div class="aim-bub">${answer.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')}</div></div>`;
+  el.scrollTop = el.scrollHeight;
+}
+
+// ══════════════════════════════════════════
+// 15. ÉVÉNEMENTS
+// ══════════════════════════════════════════
+function joinEv(btn) {
+  if (!currentUser) { toast('Connecte-toi pour t\'inscrire !'); return; }
+  if (btn.classList.contains('done')) { toast('⚠️ Tu es déjà inscrit(e).'); return; }
+  btn.classList.remove('go'); btn.classList.add('done'); btn.textContent = '✅ Inscrit(e)';
+  const u = DB.getUser(currentUser.email);
+  if (u) { u.eventsJoined=(u.eventsJoined||0)+1; DB.saveUser(u); DB.session=u; currentUser=u;
+    document.getElementById('dsEvJ').textContent  = u.eventsJoined;
+    document.getElementById('psEvJ').textContent  = u.eventsJoined; }
+  toast('🎉 Inscription confirmée !');
+}
+
+// ══════════════════════════════════════════
+// 16. QUIZ ÉTUDIANT
+// ══════════════════════════════════════════
+function initQuiz() {
+  quizState = { idx:0, score:0, answered:false };
+  showQuestion();
+}
+
+function showQuestion() {
+  const q = QUIZ_QUESTIONS[quizState.idx];
+  document.getElementById('qzQ').textContent = q.q;
+  document.getElementById('qzScore').textContent = `${quizState.score} / ${quizState.idx}`;
+  document.getElementById('qzBar').style.width = ((quizState.idx / QUIZ_QUESTIONS.length)*100) + '%';
+  document.getElementById('qzInfo').textContent = `Question ${quizState.idx+1} / ${QUIZ_QUESTIONS.length}`;
+  document.getElementById('qzNext').style.display = 'none';
+  quizState.answered = false;
+  // Générer les boutons de réponse
+  const optsEl = document.getElementById('qzOpts');
+  optsEl.innerHTML = q.opts.map((opt,i) =>
+    `<button class="qopt" onclick="answerQuiz(${i})">${opt}</button>`
+  ).join('');
+}
+
+function answerQuiz(chosen) {
+  if (quizState.answered) return;
+  quizState.answered = true;
+  const q    = QUIZ_QUESTIONS[quizState.idx];
+  const btns = document.querySelectorAll('.qopt');
+  // Colorier les boutons (vert = bonne réponse, rouge = mauvaise)
+  btns.forEach((btn, i) => {
+    if (i === q.a) btn.classList.add('correct');
+    else if (i === chosen && chosen !== q.a) btn.classList.add('wrong');
+    btn.disabled = true;
+  });
+  if (chosen === q.a) quizState.score++;
+  document.getElementById('qzInfo').textContent = `${q.exp} • Score : ${quizState.score} / ${quizState.idx+1}`;
+  document.getElementById('qzScore').textContent = `${quizState.score} / ${quizState.idx+1}`;
+  // Afficher "Suivant" ou message de fin
+  if (quizState.idx < QUIZ_QUESTIONS.length-1) {
+    document.getElementById('qzNext').style.display = 'inline-flex';
+  } else {
+    document.getElementById('qzInfo').textContent +=
+      ` | Score final : ${quizState.score}/${QUIZ_QUESTIONS.length} ${quizState.score>=8?'🏆 Excellent !':quizState.score>=5?'👍 Bien joué !':'💪 À réviser !'}`;
+    document.getElementById('qzBar').style.width = '100%';
+  }
+}
+
+function nextQuestion() { quizState.idx++; showQuestion(); }
+
+// ══════════════════════════════════════════
+// 17. MÉTÉO PARIS (API Open-Meteo, gratuit)
+// ══════════════════════════════════════════
+async function initWeather() {
+  try {
+    // Paris : lat=48.8566, lon=2.3522
+    const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=48.8566&longitude=2.3522&current=temperature_2m,weathercode,windspeed_10m&wind_speed_unit=kmh');
+    const d   = await res.json();
+    const cur = d.current;
+    const temp = Math.round(cur.temperature_2m);
+    const wind = Math.round(cur.windspeed_10m);
+    // Icône et description selon le code météo WMO
+    const WEATHER_ICONS = {
+      0:'☀️',1:'🌤️',2:'⛅',3:'☁️',45:'🌫️',48:'🌫️',51:'🌦️',53:'🌦️',55:'🌧️',
+      61:'🌧️',63:'🌧️',65:'🌧️',71:'❄️',73:'❄️',75:'❄️',80:'🌦️',81:'🌧️',
+      82:'⛈️',95:'⛈️',96:'⛈️',99:'⛈️'
+    };
+    const WEATHER_DESC = {
+      0:'Ciel dégagé',1:'Légèrement nuageux',2:'Partiellement nuageux',3:'Couvert',
+      45:'Brouillard',48:'Brouillard givrant',51:'Bruine légère',53:'Bruine',55:'Bruine forte',
+      61:'Pluie légère',63:'Pluie modérée',65:'Pluie forte',71:'Neige légère',73:'Neige',
+      75:'Forte neige',80:'Averses légères',81:'Averses',82:'Averses fortes',
+      95:'Orage',96:'Orage avec grêle',99:'Orage fort'
+    };
+    const code = cur.weathercode;
+    document.getElementById('wIco').textContent  = WEATHER_ICONS[code] || '🌡️';
+    document.getElementById('wTemp').textContent = temp + '°C';
+    document.getElementById('wDesc').textContent = WEATHER_DESC[code] || 'Météo';
+    document.getElementById('wDetail').textContent = `Paris · Vent ${wind} km/h`;
+  } catch {
+    // Silencieux si l'API est indisponible
+    document.getElementById('wDesc').textContent = 'Météo indisponible';
+  }
+}
+
+// ══════════════════════════════════════════
+// 18. COMPTE À REBOURS (prochain événement)
+// ══════════════════════════════════════════
+function initCountdown() {
+  // Prochain événement : soirée d'intégration BTS SIO le 12 mai
+  const target = new Date(new Date().getFullYear(), 4, 12, 19, 0, 0); // mois = 4 (mai = index 4)
+  if (target < new Date()) target.setFullYear(target.getFullYear()+1); // reporter à l'année suivante si passé
+  function tick() {
+    const diff = target - new Date();
+    if (diff <= 0) { document.getElementById('cwD').textContent = '00'; return; }
+    const s = Math.floor(diff/1000);
+    document.getElementById('cwD').textContent = String(Math.floor(s/86400)).padStart(2,'0');
+    document.getElementById('cwH').textContent = String(Math.floor((s%86400)/3600)).padStart(2,'0');
+    document.getElementById('cwM').textContent = String(Math.floor((s%3600)/60)).padStart(2,'0');
+    document.getElementById('cwS').textContent = String(s%60).padStart(2,'0');
+  }
+  tick(); setInterval(tick, 1000); // Mise à jour chaque seconde
+}
+
+// ══════════════════════════════════════════
+// 19. PROFIL — SAUVEGARDE
+// ══════════════════════════════════════════
+function saveProfile() {
+  if (!currentUser) return;
+  const u = DB.getUser(currentUser.email); if (!u) return;
+  u.first = document.getElementById('peFirst').value.trim() || u.first;
+  u.last  = document.getElementById('peLast').value.trim();
+  u.bio   = document.getElementById('peBio').value.trim();
+  DB.saveUser(u); DB.session = u; currentUser = u;
+  // Mettre à jour l'affichage partout
+  const fullName = u.first + (u.last?' '+u.last:'');
+  document.getElementById('sdName').textContent = fullName;
+  document.getElementById('profNm').textContent = fullName;
+  document.getElementById('wName').textContent  = u.first;
+  toast('✅ Profil mis à jour !');
+}
+
+// ══════════════════════════════════════════
+// 20. AUTO-LOGIN (session persistante)
+// ══════════════════════════════════════════
+window.addEventListener('load', () => {
+  const s = DB.session;
+  if (s) {
+    // Si une session existe, ouvrir le dashboard directement
+    setTimeout(() => { openDash(s); toast(`👋 Bon retour, ${s.first} !`); }, 400);
+  }
+});
+</script>
+</body>
+</html>
