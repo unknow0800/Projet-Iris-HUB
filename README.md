@@ -273,7 +273,7 @@ Ce projet constitue un livrable complet pour le BTS SIO SLAM :
 | Nom | Rôle |
 |---|---|
 | Dowe Marc Rene | Développeur Front-End |
-|  | Designer UI/UX |
+|  Rayane | Designer UI/UX |
 | Dowe Marc | Chef de projet |
 
 **Promotion :** BTS SIO SLAM — Iris Paris  
@@ -292,7 +292,6 @@ Voir le fichier [LICENSE](./LICENSE) pour plus de détails.
 
 - [IRIS Paris](https://ecoleiris.fr) — École et cadre pédagogique
 - [MediaSchool](https://www.mediaschool.fr) — Groupe
-- [Anthropic](https://www.anthropic.com) — API Claude pour l'assistant IA
 - [Firebase](https://firebase.google.com) — Base de données temps réel
 - [Open-Meteo](https://open-meteo.com) — API météo gratuite
 - [DiceBear](https://www.dicebear.com) — Avatars par défaut
