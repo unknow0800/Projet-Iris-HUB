@@ -5,10 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Iris Paris — Espace Étudiant</title>
 
-<!-- ════════════════════════════════════════════════════════ -->
+<!-- ═══════════════════════════════════════════════
+   CONFIGURATION — Clés API et constantes globales
+════════════════════════════════════════════════════════ -->
 <script>
 const CFG = {
-  GOOGLE_CLIENT_ID: "",
+  GOOGLE_CLIENT_ID: "1078633759355-s6viom7b660f0in755erpadkfg4p4mt0.apps.googleusercontent.com",
   MSFT_CLIENT_ID:   "",
   FB_API_KEY:       "AIzaSyCEMsVLWTDFHQB6dtDYm2qC1K3Q6XdFkd0",
   FB_AUTH_DOMAIN:   "iris-paris-hub.firebaseapp.com",
@@ -695,6 +697,15 @@ footer p  { font-size:.76rem; color:var(--muted); }
 .quiz-progress { height:3px; background:var(--bord); border-radius:2px; margin-bottom:1.2rem; overflow:hidden; }
 .quiz-bar { height:100%; background:var(--ac); border-radius:2px; transition:width .4s; }
 
+/* ── Professeurs & Emploi du Temps ── */
+.teacher-card { background:var(--bg2); border:1px solid var(--bord); border-radius:var(--R);
+  padding:1.5rem; transition:all .28s; cursor:none; }
+.teacher-card:hover { border-color:var(--ac); }
+.schedule-table { width:100%; border-collapse:collapse; font-size:.85rem; }
+.schedule-table th { padding:.7rem; text-align:left; color:var(--ac); text-transform:uppercase; letter-spacing:.06em; border-bottom:2px solid var(--bord2); }
+.schedule-table td { padding:.7rem; border-bottom:1px solid var(--bord); }
+.schedule-table td:first-child { font-weight:600; color:var(--ac); }
+
 /* ── Responsive ── */
 @media(max-width:1100px){ .dst{grid-template-columns:repeat(2,1fr)} .dfeed{grid-template-columns:1fr} }
 @media(max-width:900px){
@@ -1003,6 +1014,11 @@ footer p  { font-size:.76rem; color:var(--muted); }
       <div class="dni" onclick="navTo('quiz')"><span class="dni-ico">🧠</span>Quiz Étudiant</div>
     </div>
     <div class="ds-sec">
+      <div class="ds-lbl">Scolarité</div>
+      <div class="dni" onclick="navTo('teachers')"><span class="dni-ico">👨‍🏫</span>Professeurs</div>
+      <div class="dni" onclick="navTo('schedule')"><span class="dni-ico">⏰</span>Emploi du Temps</div>
+    </div>
+    <div class="ds-sec">
       <div class="ds-lbl">Mon espace</div>
       <div class="dni" onclick="navTo('profil')"><span class="dni-ico">👤</span>Mon Profil</div>
       <div class="dni" onclick="navTo('notifs')"><span class="dni-ico">🔔</span>Notifications
@@ -1218,6 +1234,62 @@ footer p  { font-size:.76rem; color:var(--muted); }
         </div>
       </div>
 
+      <!-- ══ PANEL PROFESSEURS ══ -->
+      <div class="panel" id="panel-teachers">
+        <div style="margin-bottom:1.8rem">
+          <h2 style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:.04em;margin-bottom:.3rem">Équipe Pédagogique</h2>
+          <p style="font-size:.85rem;color:var(--muted)">Retrouve tous tes professeurs et leurs coordonnées de contact.</p>
+        </div>
+        <!-- Sélecteur de filière pour voir les profs concernés -->
+        <div style="margin-bottom:1.4rem;display:flex;gap:.5rem;flex-wrap:wrap" id="teacherFilter"></div>
+        <!-- Grille des professeurs -->
+        <div id="teachersList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1.2rem"></div>
+      </div>
+
+      <!-- ══ PANEL EMPLOI DU TEMPS ══ -->
+      <div class="panel" id="panel-schedule">
+        <div style="margin-bottom:1.8rem">
+          <h2 style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:.04em;margin-bottom:.3rem">Emploi du Temps</h2>
+          <p style="font-size:.85rem;color:var(--muted)">Ton horaire de cours pour cette semaine.</p>
+        </div>
+        <!-- Sélecteur de semaine -->
+        <div style="display:flex;gap:.5rem;margin-bottom:1.4rem;align-items:center">
+          <button class="btn-ghost" onclick="prevWeek()" style="font-size:.8rem;padding:.35rem .75rem">← Semaine précédente</button>
+          <div style="flex:1;text-align:center;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:.9rem" id="weekLabel">Semaine du 2-6 mai 2026</div>
+          <button class="btn-ghost" onclick="nextWeek()" style="font-size:.8rem;padding:.35rem .75rem">Semaine suivante →</button>
+        </div>
+        <!-- Tableau horaire -->
+        <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:.85rem">
+            <thead>
+              <tr style="border-bottom:2px solid var(--bord2)">
+                <th style="padding:.7rem;text-align:left;color:var(--ac);text-transform:uppercase;letter-spacing:.06em">Jour</th>
+                <th style="padding:.7rem;text-align:center;color:var(--ac);text-transform:uppercase;letter-spacing:.06em">9h00</th>
+                <th style="padding:.7rem;text-align:center;color:var(--ac);text-transform:uppercase;letter-spacing:.06em">10h30</th>
+                <th style="padding:.7rem;text-align:center;color:var(--ac);text-transform:uppercase;letter-spacing:.06em">13h30</th>
+                <th style="padding:.7rem;text-align:center;color:var(--ac);text-transform:uppercase;letter-spacing:.06em">15h00</th>
+              </tr>
+            </thead>
+            <tbody id="scheduleTable"></tbody>
+          </table>
+        </div>
+        <!-- Légende -->
+        <div style="margin-top:1.4rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.8rem">
+          <div style="padding:.7rem;background:rgba(26,58,107,.2);border:1px solid var(--blue);border-radius:6px;font-size:.78rem">
+            <div style="color:var(--blue);font-weight:600">💻 Cours en classe</div>
+            <div style="color:var(--muted);margin-top:.2rem">Salle d'informatique</div>
+          </div>
+          <div style="padding:.7rem;background:rgba(245,200,66,.1);border:1px solid var(--ac);border-radius:6px;font-size:.78rem">
+            <div style="color:var(--ac);font-weight:600">🌐 Classe virtuelle</div>
+            <div style="color:var(--muted);margin-top:.2rem">Sur Zoom/Teams</div>
+          </div>
+          <div style="padding:.7rem;background:rgba(41,199,111,.1);border:1px solid var(--green);border-radius:6px;font-size:.78rem">
+            <div style="color:var(--green);font-weight:600">🛠️ TP Pratique</div>
+            <div style="color:var(--muted);margin-top:.2rem">Travaux pratiques</div>
+          </div>
+        </div>
+      </div>
+
       <!-- ══ PANEL NOTIFICATIONS ══ -->
       <div class="panel" id="panel-notifs">
         <div class="notif-l">
@@ -1254,7 +1326,7 @@ const DEFAULT_AVATARS = [
 
 // Correspondance id_promo → nom affiché
 const PROMO_LABELS = {
-  "bts-slam-1":    "BTS SIO — Rentree decale",
+  "bts-sio-decalee":"BTS SIO — Rentree decalee",
   "bts-slam-1":    "BTS SIO SLAM — 1re année",
   "bts-slam-2":    "BTS SIO SLAM — 2e année",
   "bts-sisr-1":    "BTS SIO SISR — 1re année",
@@ -1291,6 +1363,48 @@ const QUIZ_QUESTIONS = [
   { q:"Quel service permet d'obtenir l'APL (aide au logement) ?", opts:["CAF","CPAM","Pôle Emploi","URSSAF"], a:0, exp:"L'APL est versée par la CAF (Caisse d'Allocations Familiales)." },
 ];
 
+// Professeurs par promo
+const TEACHERS = {
+  "bts-slam-1": [
+    { name:"Marc Dupont", speciality:"Développement Web", email:"m.dupont@iris.fr", phone:"01 44 01 86 71" },
+    { name:"Sophie Martin", speciality:"Bases de Données", email:"s.martin@iris.fr", phone:"01 44 01 86 72" },
+    { name:"Jean Leclerc", speciality:"Anglais", email:"j.leclerc@iris.fr", phone:"01 44 01 86 73" },
+  ],
+  "bts-slam-2": [
+    { name:"Michel Roux", speciality:"Architecture Web", email:"m.roux@iris.fr", phone:"01 44 01 86 74" },
+    { name:"Claire Bernard", speciality:"PHP/Symfony", email:"c.bernard@iris.fr", phone:"01 44 01 86 75" },
+    { name:"Thierry Vincent", speciality:"Git & DevOps", email:"t.vincent@iris.fr", phone:"01 44 01 86 76" },
+  ],
+  "bts-sisr-1": [
+    { name:"Patrick Moreau", speciality:"Réseaux", email:"p.moreau@iris.fr", phone:"01 44 01 86 77" },
+    { name:"Nathalie Petit", speciality:"Sécurité Informatique", email:"n.petit@iris.fr", phone:"01 44 01 86 78" },
+    { name:"Claude Dufour", speciality:"Systèmes Linux", email:"c.dufour@iris.fr", phone:"01 44 01 86 79" },
+  ],
+  "bts-sisr-2": [
+    { name:"Bernard Chevalier", speciality:"Infrastructure IT", email:"b.chevalier@iris.fr", phone:"01 44 01 86 80" },
+    { name:"Isabelle Robin", speciality:"Administration Serveurs", email:"i.robin@iris.fr", phone:"01 44 01 86 81" },
+    { name:"Laurent Fournier", speciality:"Cloud Computing", email:"l.fournier@iris.fr", phone:"01 44 01 86 82" },
+  ],
+};
+
+// Emploi du temps par promo (structure : jour → heures → cours)
+const SCHEDULE_DATA = {
+  "bts-slam-1": {
+    "Lundi": ["💻 Dev Web (Marc D.)", "☕ Pause", "🗄️ BDD (Sophie M.)", "🧘 Déjeuner"],
+    "Mardi": ["💻 Dev Web (Marc D.)", "☕ Pause", "🛠️ TP Pratique (Sophie M.)", "🧘 Déjeuner"],
+    "Mercredi": ["🌐 Classe virt. (Claire B.)", "☕ Pause", "📚 Anglais (Jean L.)", "🧘 Déjeuner"],
+    "Jeudi": ["💻 Dev Web (Marc D.)", "☕ Pause", "🗄️ BDD (Sophie M.)", "🧘 Déjeuner"],
+    "Vendredi": ["🛠️ TP Pratique (Claire B.)", "☕ Pause", "📖 Révisions", "🧘 Déjeuner"],
+  },
+  "bts-slam-2": [
+    { "Lundi": ["🏗️ Archi Web (Michel R.)", "☕ Pause", "💻 PHP (Claire B.)", "🧘 Déjeuner"] },
+    { "Mardi": ["💻 Symfony (Claire B.)", "☕ Pause", "🛠️ TP (Claire B.)", "🧘 Déjeuner"] },
+    { "Mercredi": ["🌐 Classe virt. (Thierry V.)", "☕ Pause", "📚 Anglais", "🧘 Déjeuner"] },
+    { "Jeudi": ["🏗️ Archi Web (Michel R.)", "☕ Pause", "🔧 Git/DevOps (Thierry V.)", "🧘 Déjeuner"] },
+    { "Vendredi": ["🛠️ TP Pratique (Michel R.)", "☕ Pause", "📖 Projet en groupe", "🧘 Déjeuner"] },
+  ],
+};
+
 // ══════════════════════════════════════════
 // 2. BASE DE DONNÉES LOCALE (localStorage)
 // ══════════════════════════════════════════
@@ -1314,6 +1428,7 @@ let currentUser   = null;   // Utilisateur connecté
 let activePromo   = null;   // Salle de chat active
 let fbUnsubscribe = null;   // Interval de polling localStorage
 let quizState     = { idx:0, score:0, answered:false }; // État du quiz
+let currentWeek   = 0;      // Semaine actuelle pour l'emploi du temps
 
 // ══════════════════════════════════════════
 // 4. LOADER DE DÉMARRAGE
@@ -1651,6 +1766,8 @@ function openDash(user) {
   initQuiz();
   initWeather();
   initCountdown();
+  displayTeachers(user.promo);
+  initSchedule(user.promo);
 
   navTo('home');
 }
@@ -1670,11 +1787,11 @@ function navTo(name) {
   document.getElementById('panel-'+name)?.classList.add('active');
   // Mettre à jour le titre de la topbar
   const labels = {home:'Tableau de bord',chat:'Chat Promo',ia:'Assistant IA Iris',
-    events:'Événements',quiz:'Quiz Étudiant 🧠',profil:'Mon Profil',notifs:'Notifications'};
+    events:'Événements',quiz:'Quiz Étudiant 🧠',teachers:'Équipe Pédagogique',schedule:'Emploi du Temps',profil:'Mon Profil',notifs:'Notifications'};
   document.getElementById('dtbTtl').textContent = labels[name] || name;
   // Mettre à jour l'item actif dans la sidebar
   document.querySelectorAll('.dni').forEach(i => i.classList.remove('active'));
-  const keywords = {home:'accueil',chat:'chat',ia:'ia',events:'événements',quiz:'quiz',profil:'profil',notifs:'notif'};
+  const keywords = {home:'accueil',chat:'chat',ia:'ia',events:'événements',quiz:'quiz',teachers:'professeur',schedule:'emploi',profil:'profil',notifs:'notif'};
   document.querySelectorAll('.dni').forEach(i => {
     if (i.textContent.toLowerCase().includes(keywords[name]||name.slice(0,4).toLowerCase())) i.classList.add('active');
   });
@@ -2067,7 +2184,80 @@ function saveProfile() {
 }
 
 // ══════════════════════════════════════════
-// 20. AUTO-LOGIN (session persistante)
+// 21. PROFESSEURS (affichage et contact)
+// ══════════════════════════════════════════
+function displayTeachers(promo) {
+  const teachers = TEACHERS[promo] || [];
+  const el = document.getElementById('teachersList');
+  const filterEl = document.getElementById('teacherFilter');
+  
+  if (!teachers || teachers.length === 0) {
+    el.innerHTML = '<div style="grid-column:1/-1;padding:2rem;text-align:center;color:var(--muted)">Aucun professeur pour ta promo.</div>';
+    return;
+  }
+  
+  el.innerHTML = teachers.map(t => `
+    <div style="background:var(--bg2);border:1px solid var(--bord);border-radius:var(--R);padding:1.5rem;transition:all .28s;cursor:none" onmouseover="this.style.borderColor='var(--ac)'" onmouseout="this.style.borderColor='var(--bord)'">
+      <div style="display:flex;align-items:center;gap:1rem;margin-bottom:.9rem">
+        <div style="width:50px;height:50px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--ac2));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.8rem;color:var(--ac);flex-shrink:0">${t.name.split(' ').map(w=>w[0]).join('')}</div>
+        <div>
+          <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:.95rem">${t.name}</div>
+          <div style="font-size:.78rem;color:var(--ac)">👨‍🏫 ${t.speciality}</div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:.5rem;font-size:.8rem;color:var(--muted)">
+        <div>📧 <a href="mailto:${t.email}" style="color:var(--ac);text-decoration:none">${t.email}</a></div>
+        <div>📞 <a href="tel:${t.phone}" style="color:var(--ac);text-decoration:none">${t.phone}</a></div>
+      </div>
+      <div style="margin-top:.9rem;display:flex;gap:.5rem">
+        <a href="mailto:${t.email}?subject=Question%20sur%20${t.speciality}" class="btn-ghost" style="flex:1;font-size:.75rem;padding:.35rem .5rem;text-align:center">Envoyer un email</a>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ══════════════════════════════════════════
+// 22. EMPLOI DU TEMPS (affichage et navigation)
+// ══════════════════════════════════════════
+function initSchedule(promo) {
+  currentWeek = 0;
+  renderSchedule(promo);
+}
+
+function renderSchedule(promo) {
+  const scheduleData = SCHEDULE_DATA[promo];
+  if (!scheduleData) {
+    document.getElementById('scheduleTable').innerHTML = '<tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--muted)">Aucun emploi du temps disponible.</td></tr>';
+    return;
+  }
+  
+  // Créer la date de la semaine
+  const today = new Date();
+  const startOfWeek = new Date(today);
+  startOfWeek.setDate(today.getDate() - today.getDay() + 1 + (currentWeek * 7));
+  const endOfWeek = new Date(startOfWeek);
+  endOfWeek.setDate(startOfWeek.getDate() + 4);
+  
+  const dateStr = `Semaine du ${startOfWeek.toLocaleDateString('fr-FR', {day:'numeric', month:'numeric'})} au ${endOfWeek.toLocaleDateString('fr-FR', {day:'numeric', month:'numeric'})}`;
+  document.getElementById('weekLabel').textContent = dateStr;
+  
+  const days = Array.isArray(scheduleData) ? Object.values(scheduleData).map((d,i) => Object.keys(d)[0]) : Object.keys(scheduleData);
+  const rows = days.map(day => {
+    const dayData = Array.isArray(scheduleData) ? scheduleData[days.indexOf(day)][day] : scheduleData[day];
+    return `<tr style="border-bottom:1px solid var(--bord)">
+      <td style="padding:.7rem;font-weight:600;color:var(--ac)">${day}</td>
+      ${dayData.map(course => `<td style="padding:.7rem;text-align:center;font-size:.78rem;color:var(--muted)">${course}</td>`).join('')}
+    </tr>`;
+  }).join('');
+  
+  document.getElementById('scheduleTable').innerHTML = rows;
+}
+
+function prevWeek() { currentWeek--; renderSchedule(currentUser.promo); }
+function nextWeek() { currentWeek++; renderSchedule(currentUser.promo); }
+
+// ══════════════════════════════════════════
+// 23. AUTO-LOGIN (session persistante)
 // ══════════════════════════════════════════
 window.addEventListener('load', () => {
   const s = DB.session;
