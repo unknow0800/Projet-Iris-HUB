@@ -89,7 +89,7 @@ nav.scrolled { background:rgba(8,14,28,.92); backdrop-filter:blur(20px); border-
   font-family:'Bebas Neue',sans-serif; font-size:1rem; color:var(--bg); transition:transform .2s; }
 .nav-brand:hover .nav-logo { transform:rotate(-4deg) scale(1.08); }
 .nav-school { font-family:'Bebas Neue',sans-serif; font-size:1.15rem; letter-spacing:.1em; }
-.nav-links  { display:flex; gap:2.2rem; list-style:none; }
+.nav-links  { display:flex; gap:1.25rem; list-style:none; }
 .nav-links a { font-size:.8rem; letter-spacing:.07em; text-transform:uppercase; color:var(--muted);
   text-decoration:none; transition:color .2s; position:relative; }
 .nav-links a::after { content:''; position:absolute; bottom:-3px; left:0; right:0;
@@ -244,6 +244,40 @@ h2.st { font-family:'Bebas Neue',sans-serif; font-size:clamp(2.5rem,5vw,4.2rem);
 .ev-badge { padding:.22rem .75rem; border-radius:4px; font-size:.67rem; letter-spacing:.06em;
   text-transform:uppercase; background:rgba(245,200,66,.1); color:var(--ac); border:1px solid rgba(245,200,66,.18); }
 
+/* -- Actualites campus + checklist -- */
+.news-g { display:grid; grid-template-columns:repeat(4,1fr); gap:1rem; margin-bottom:1.4rem; }
+.news-card { background:var(--bg2); border:1px solid var(--bord); border-radius:var(--R); padding:1.35rem;
+  min-height:230px; display:flex; flex-direction:column; transition:transform .28s,border-color .28s,background .28s; }
+.news-card.hot { background:linear-gradient(135deg,rgba(245,200,66,.1),var(--bg2) 58%); border-color:var(--bord2); }
+.news-card:hover { transform:translateY(-4px); border-color:var(--bord2); background:var(--bg3); }
+.news-k { font-size:.66rem; text-transform:uppercase; letter-spacing:.12em; color:var(--ac); margin-bottom:.75rem; font-weight:700; }
+.news-card h3 { font-family:'Space Grotesk',sans-serif; font-size:.98rem; line-height:1.35; margin-bottom:.55rem; }
+.news-card p { font-size:.82rem; color:var(--muted); line-height:1.65; margin-bottom:1rem; }
+.news-card a { margin-top:auto; color:var(--ac); text-decoration:none; font-size:.78rem; font-weight:600; }
+.todo-panel { display:grid; grid-template-columns:260px 1fr; gap:1.2rem; align-items:start;
+  background:var(--bg3); border:1px solid var(--bord); border-radius:var(--R); padding:1.25rem; }
+.todo-panel h3 { font-family:'Space Grotesk',sans-serif; font-size:1rem; }
+.sl.mini { margin-bottom:.35rem; font-size:.62rem; }
+.todo-g { display:grid; grid-template-columns:repeat(4,1fr); gap:.75rem; }
+.todo-i { border:1px solid var(--bord); border-radius:6px; padding:.85rem; background:rgba(255,255,255,.025); }
+.todo-i strong { display:block; font-size:.82rem; margin-bottom:.25rem; color:var(--text); }
+.todo-i span { display:block; color:var(--muted); font-size:.76rem; line-height:1.55; }
+
+/* -- Parcours tech : dev, cyber, IA, DevOps -- */
+.tracks-g { display:grid; grid-template-columns:repeat(2,1fr); gap:1rem; }
+.track-card { background:var(--bg2); border:1px solid var(--bord); border-radius:var(--R); padding:1.45rem;
+  transition:transform .28s,border-color .28s; }
+.track-card:hover { transform:translateY(-4px); border-color:var(--bord2); }
+.track-top { display:flex; align-items:center; gap:.8rem; margin-bottom:.8rem; }
+.track-top span { width:34px; height:34px; display:flex; align-items:center; justify-content:center;
+  border-radius:6px; background:rgba(245,200,66,.1); border:1px solid rgba(245,200,66,.22);
+  color:var(--ac); font-family:'Bebas Neue',sans-serif; font-size:1.1rem; }
+.track-top h3 { font-family:'Space Grotesk',sans-serif; font-size:1rem; }
+.track-card p { color:var(--muted); font-size:.84rem; line-height:1.65; margin-bottom:.75rem; }
+.track-card ul { list-style:none; display:flex; flex-direction:column; gap:.42rem; }
+.track-card li { color:var(--muted); font-size:.8rem; line-height:1.5; display:flex; gap:.4rem; }
+.track-card li::before { content:'→'; color:var(--ac); flex-shrink:0; }
+
 /* ── Bons plans (6 cartes) ── */
 .plans-g { display:grid; grid-template-columns:repeat(auto-fit,minmax(195px,1fr)); gap:1rem; }
 .pc { padding:1.65rem; background:var(--bg2); border:1px solid var(--bord);
@@ -321,10 +355,11 @@ footer p  { font-size:.76rem; color:var(--muted); }
 ════════════════════════════════════════════ */
 .modal-ov { position:fixed; inset:0; background:rgba(5,9,18,.88); backdrop-filter:blur(22px);
   z-index:700; display:flex; align-items:center; justify-content:center;
-  opacity:0; pointer-events:none; transition:opacity .32s; padding:1rem; }
+  opacity:0; pointer-events:none; transition:opacity .32s; padding:1rem; overflow-y:auto; }
 .modal-ov.active { opacity:1; pointer-events:all; }
 .modal { background:var(--bg2); border:1px solid var(--bord); width:min(488px,100%);
-  border-radius:10px; position:relative; overflow:hidden;
+  max-height:calc(100dvh - 2rem); border-radius:10px; position:relative; overflow:hidden;
+  display:flex; flex-direction:column;
   transform:translateY(26px) scale(.97); transition:transform .38s cubic-bezier(.23,1,.32,1); }
 .modal-ov.active .modal { transform:none; }
 /* Lueur décorative dorée en fond du modal */
@@ -347,7 +382,7 @@ footer p  { font-size:.76rem; color:var(--muted); }
 .tab-b { flex:1; padding:.42rem; border-radius:5px; border:none; font-size:.8rem;
   font-family:'DM Sans',sans-serif; cursor:pointer; transition:all .28s; color:var(--muted); background:transparent; font-weight:500; }
 .tab-b.act { background:var(--ac); color:var(--bg); font-weight:700; }
-.modal-bd { padding:1.4rem 1.85rem 1.85rem; }
+.modal-bd { padding:1.4rem 1.85rem 1.85rem; overflow-y:auto; overscroll-behavior:contain; }
 /* Boutons de connexion sociale (Google, Microsoft) */
 .s-btn { width:100%; padding:.65rem; border:1px solid var(--bord); border-radius:5px;
   background:transparent; color:var(--text); font-size:.83rem; font-family:'DM Sans',sans-serif;
@@ -376,7 +411,7 @@ footer p  { font-size:.76rem; color:var(--muted); }
 /* Bouton de soumission du formulaire */
 .btn-sub { width:100%; padding:.76rem; background:var(--ac); border:none; color:var(--bg);
   font-size:.9rem; font-family:'DM Sans',sans-serif; font-weight:700; border-radius:5px;
-  cursor:pointer; transition:all .28s; margin-top:.6rem; }
+  cursor:pointer; transition:all .28s; margin-top:.6rem; position:sticky; bottom:0; z-index:2; }
 .btn-sub:hover { background:var(--acl); transform:translateY(-1px); }
 /* Écran de succès après inscription/connexion */
 .suc-ov { display:none; text-align:center; padding:2.2rem; }
@@ -620,6 +655,9 @@ footer p  { font-size:.76rem; color:var(--muted); }
 /* ── Quiz étudiants ── */
 .quiz-wrap { background:var(--bg2); border:1px solid var(--bord); border-radius:var(--R); padding:1.5rem; }
 .quiz-q  { font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:1rem; margin-bottom:1.2rem; line-height:1.5; }
+.quiz-meta { display:flex; flex-wrap:wrap; gap:.35rem; margin-bottom:.55rem; font-family:'DM Sans',sans-serif; font-size:.68rem; font-weight:600; color:var(--muted); }
+.quiz-meta span { padding:.16rem .48rem; border:1px solid var(--bord); border-radius:100px; background:var(--bg3); }
+.quiz-meta .qz-difficulty { border-color:rgba(245,200,66,.28); color:var(--ac); background:rgba(245,200,66,.08); }
 .quiz-opts { display:flex; flex-direction:column; gap:.6rem; margin-bottom:1.2rem; }
 .qopt { padding:.75rem 1rem; border:1px solid var(--bord); border-radius:6px; background:var(--bg3);
   cursor:pointer; font-size:.88rem; transition:all .22s; text-align:left; font-family:'DM Sans',sans-serif; color:var(--text); }
@@ -630,24 +668,45 @@ footer p  { font-size:.76rem; color:var(--muted); }
 .quiz-score { font-family:'Bebas Neue',sans-serif; font-size:1.6rem; color:var(--ac); }
 .quiz-progress { height:3px; background:var(--bord); border-radius:2px; margin-bottom:1.2rem; overflow:hidden; }
 .quiz-bar { height:100%; background:var(--ac); border-radius:2px; transition:width .4s; }
+
 /* ── Responsive ── */
-@media(max-width:1100px){ .dst{grid-template-columns:repeat(2,1fr)} .dfeed{grid-template-columns:1fr} }
+@media(max-width:1100px){ .dst{grid-template-columns:repeat(2,1fr)} .dfeed{grid-template-columns:1fr} .news-g{grid-template-columns:repeat(2,1fr)} .todo-g{grid-template-columns:repeat(2,1fr)} }
 @media(max-width:900px){
-  body{cursor:auto}
   nav{padding:.85rem 1.25rem} .nav-links{display:none} .burger{display:flex}
   .cg{grid-template-columns:1fr;gap:2rem} .cards-g{grid-template-columns:1fr}
+  .todo-panel{grid-template-columns:1fr} .tracks-g{grid-template-columns:1fr}
   .photos-g{grid-template-columns:1fr 1fr;grid-template-rows:auto}
   .pg:nth-child(1){grid-column:span 2} .ev{grid-template-columns:60px 1fr} .ev-badge{display:none}
   .dl{grid-template-columns:1fr} .ds{display:none}
-  .dm{padding:1rem}
-  .dst{grid-template-columns:1fr 1fr}
-  .prof-sts{grid-template-columns:1fr}
 }
 @media(max-width:600px){
-  .si{padding:3.8rem 1.1rem}
-  .hp-1,.hp-2,.hp-3,.hp-4{display:none}
-  .pfg{grid-template-columns:1fr}
-  .dst{grid-template-columns:1fr}
-  .prof-hd{align-items:flex-start}
-  .theme-grid{grid-template-columns:1fr}
+  .si{padding:3.8rem 1.1rem} .hp-1,.hp-2,.hp-3,.hp-4{display:none} .pfg{grid-template-columns:1fr}
+  .news-g,.todo-g{grid-template-columns:1fr}
+  .modal-ov{align-items:flex-start;padding:.65rem}
+  .modal{width:100%;max-height:calc(100dvh - 1.3rem);border-radius:8px}
+  .modal-hd{padding:1rem 1rem 0}
+  .modal-brand{margin-bottom:.75rem}
+  .modal-ttl{font-size:1.65rem}
+  .modal-sub{font-size:.76rem}
+  .modal-tabs{margin:.9rem 0 0}
+  .modal-bd{padding:.9rem 1rem 1rem}
+  .s-btn{padding:.55rem;margin-bottom:.42rem;font-size:.78rem}
+  .divider{margin:.65rem 0;font-size:.68rem}
+  .mff{margin-bottom:.68rem}
+  .mff-2{grid-template-columns:1fr;gap:0}
+  .mff input,.mff select{padding:.56rem .75rem;font-size:.82rem}
+  .btn-sub{padding:.72rem;margin-top:.35rem;box-shadow:0 -10px 18px rgba(14,24,40,.92)}
+}
+
+@media(max-height:720px){
+  .modal-ov{align-items:flex-start}
+  .modal-hd{padding:1rem 1.2rem 0}
+  .modal-brand{margin-bottom:.7rem}
+  .modal-ttl{font-size:1.65rem}
+  .modal-tabs{margin:.8rem 0 0}
+  .modal-bd{padding:.8rem 1.2rem 1rem}
+  .s-btn{padding:.5rem;margin-bottom:.38rem}
+  .divider{margin:.55rem 0}
+  .mff{margin-bottom:.6rem}
+  .mff input,.mff select{padding:.52rem .75rem}
 }

@@ -1,0 +1,801 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Présentation - Iris Paris Hub</title>
+  <style>
+    :root {
+      --bg: #080e1c;
+      --panel: #0e1828;
+      --panel2: #162035;
+      --text: #edf3ff;
+      --muted: #8da1c4;
+      --line: rgba(245, 200, 66, .22);
+      --gold: #f5c842;
+      --blue: #1a3a6b;
+      --green: #2fc878;
+      --red: #f25a5a;
+      --radius: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      min-height: 100vh;
+      color: var(--text);
+      font-family: Inter, Segoe UI, Arial, sans-serif;
+      background:
+        linear-gradient(rgba(8, 14, 28, .88), rgba(8, 14, 28, .92)),
+        url("img/campus.jfif") center / cover fixed;
+      overflow: hidden;
+    }
+
+    .deck-shell {
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+    }
+
+    .topbar,
+    .footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: .85rem 1.15rem;
+      background: rgba(8, 14, 28, .82);
+      border-color: var(--line);
+      backdrop-filter: blur(14px);
+    }
+
+    .topbar {
+      border-bottom: 1px solid var(--line);
+    }
+
+    .footer {
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: .82rem;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: .65rem;
+      min-width: 0;
+    }
+
+    .logo {
+      width: 36px;
+      height: 36px;
+      display: grid;
+      place-items: center;
+      border-radius: 6px;
+      background: var(--gold);
+      color: var(--bg);
+      font-weight: 900;
+      letter-spacing: .04em;
+    }
+
+    .brand strong {
+      display: block;
+      font-size: .92rem;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .brand span {
+      display: block;
+      color: var(--muted);
+      font-size: .76rem;
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    button,
+    .ghost-link {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: .5rem .72rem;
+      background: rgba(255, 255, 255, .04);
+      color: var(--text);
+      font: inherit;
+      font-size: .82rem;
+      cursor: pointer;
+      text-decoration: none;
+      transition: border-color .2s, background .2s, color .2s;
+    }
+
+    button:hover,
+    .ghost-link:hover {
+      border-color: var(--gold);
+      color: var(--gold);
+    }
+
+    .primary {
+      background: var(--gold);
+      color: var(--bg);
+      border-color: var(--gold);
+      font-weight: 800;
+    }
+
+    .primary:hover {
+      background: #ffe279;
+      color: var(--bg);
+    }
+
+    main {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      padding: min(5vw, 3rem);
+      opacity: 0;
+      transform: translateX(20px);
+      pointer-events: none;
+      transition: opacity .28s ease, transform .28s ease;
+    }
+
+    .slide.active {
+      opacity: 1;
+      transform: none;
+      pointer-events: auto;
+    }
+
+    .content {
+      min-height: 0;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(14, 24, 40, .9);
+      box-shadow: 0 24px 70px rgba(0, 0, 0, .22);
+      width: min(1180px, 100%);
+      margin: auto;
+    }
+
+    .content {
+      padding: clamp(1.2rem, 3.2vw, 2.2rem);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 1.1rem;
+    }
+
+    .notes {
+      display: none;
+    }
+
+    .cover .content {
+      background:
+        linear-gradient(rgba(14, 24, 40, .7), rgba(14, 24, 40, .9)),
+        url("img/vie-campus.jfif") center / cover;
+    }
+
+    .eyebrow {
+      color: var(--gold);
+      text-transform: uppercase;
+      letter-spacing: .14em;
+      font-size: .78rem;
+      font-weight: 800;
+    }
+
+    h1,
+    h2 {
+      line-height: .98;
+      letter-spacing: .01em;
+    }
+
+    h1 {
+      font-size: clamp(3rem, 7vw, 6.4rem);
+      max-width: 900px;
+    }
+
+    h2 {
+      font-size: clamp(2.1rem, 4.7vw, 4.3rem);
+      max-width: 820px;
+    }
+
+    h3 {
+      color: var(--gold);
+      font-size: 1rem;
+      margin-bottom: .55rem;
+    }
+
+    p {
+      color: var(--muted);
+      line-height: 1.65;
+      max-width: 820px;
+      font-size: clamp(.96rem, 1.4vw, 1.12rem);
+    }
+
+    .lead {
+      color: var(--text);
+      font-size: clamp(1.08rem, 1.8vw, 1.35rem);
+      max-width: 760px;
+    }
+
+    .gold {
+      color: var(--gold);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: .8rem;
+      margin-top: .35rem;
+    }
+
+    .grid.three {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .card,
+    .step,
+    .tech {
+      border: 1px solid rgba(255, 255, 255, .08);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, .04);
+      padding: .92rem;
+      min-width: 0;
+    }
+
+    .card strong,
+    .step strong,
+    .tech strong {
+      display: block;
+      margin-bottom: .32rem;
+      color: var(--text);
+      font-size: .94rem;
+    }
+
+    .card span,
+    .step span,
+    .tech span {
+      color: var(--muted);
+      font-size: .88rem;
+      line-height: 1.55;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: .6rem;
+    }
+
+    .step {
+      position: relative;
+      min-height: 118px;
+    }
+
+    .step b {
+      width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--gold);
+      color: var(--bg);
+      margin-bottom: .55rem;
+      font-size: .82rem;
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(220px, .75fr);
+      gap: 1rem;
+      align-items: stretch;
+    }
+
+    .visual {
+      min-height: 230px;
+      border: 1px solid rgba(255, 255, 255, .08);
+      border-radius: var(--radius);
+      background: var(--panel2);
+      overflow: hidden;
+    }
+
+    .visual img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      filter: brightness(.82) saturate(.92);
+    }
+
+    .code-list {
+      display: grid;
+      gap: .55rem;
+    }
+
+    .code-line {
+      border-left: 3px solid var(--gold);
+      background: rgba(255, 255, 255, .04);
+      border-radius: 0 6px 6px 0;
+      padding: .65rem .8rem;
+      color: var(--muted);
+      line-height: 1.5;
+      font-size: .91rem;
+    }
+
+    code {
+      color: var(--gold);
+      font-family: Consolas, Monaco, monospace;
+      font-size: .94em;
+    }
+
+    ul {
+      list-style: none;
+      display: grid;
+      gap: .6rem;
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: .98rem;
+    }
+
+    li {
+      position: relative;
+      padding-left: 1rem;
+    }
+
+    li::before {
+      content: "";
+      position: absolute;
+      top: .65em;
+      left: 0;
+      width: .38rem;
+      height: .38rem;
+      border-radius: 50%;
+      background: var(--gold);
+    }
+
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .45rem;
+    }
+
+    .pill {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: .32rem .66rem;
+      color: var(--gold);
+      background: rgba(245, 200, 66, .08);
+      font-size: .8rem;
+      font-weight: 700;
+    }
+
+    .progress {
+      width: min(220px, 28vw);
+      height: 4px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, .12);
+    }
+
+    .progress span {
+      display: block;
+      width: 0;
+      height: 100%;
+      background: var(--gold);
+      transition: width .25s;
+    }
+
+    .dots {
+      display: flex;
+      gap: .35rem;
+      align-items: center;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, .24);
+    }
+
+    .dot.active {
+      background: var(--gold);
+    }
+
+    .warning {
+      border-left-color: var(--red);
+    }
+
+    .success {
+      border-left-color: var(--green);
+    }
+
+    @media (max-width: 980px) {
+      body {
+        overflow: auto;
+      }
+
+      .deck-shell {
+        min-height: 100dvh;
+      }
+
+      main {
+        min-height: 0;
+        overflow: visible;
+      }
+
+      .slide,
+      .slide.active {
+        position: relative;
+        display: none;
+        grid-template-columns: 1fr;
+        padding: 1rem;
+        min-height: calc(100dvh - 140px);
+      }
+
+      .slide.active {
+        display: grid;
+      }
+
+      .flow {
+        grid-template-columns: 1fr;
+      }
+
+      .grid,
+      .grid.three,
+      .split {
+        grid-template-columns: 1fr;
+      }
+
+      .controls {
+        gap: .35rem;
+      }
+
+      .progress {
+        display: none;
+      }
+    }
+
+    @media print {
+      body {
+        overflow: visible;
+        background: #fff;
+        color: #111;
+      }
+
+      .topbar,
+      .footer {
+        display: none;
+      }
+
+      main {
+        overflow: visible;
+      }
+
+      .slide,
+      .slide.active {
+        position: relative;
+        opacity: 1;
+        transform: none;
+        pointer-events: auto;
+        display: grid;
+        grid-template-columns: 1fr;
+        min-height: auto;
+        page-break-after: always;
+        padding: 1.2rem;
+      }
+
+      .content {
+        color: #111;
+        background: #fff;
+        border-color: #ccc;
+        box-shadow: none;
+      }
+
+      p,
+      li,
+      .card span,
+      .step span,
+      .tech span {
+        color: #333;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="deck-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo">IRIS</div>
+        <div>
+          <strong>Iris Paris Hub</strong>
+          <span>Présentation orale du projet</span>
+        </div>
+      </div>
+      <div class="controls">
+        <div class="progress" aria-hidden="true"><span id="progressBar"></span></div>
+        <button id="prevBtn" type="button">Préc.</button>
+        <button id="nextBtn" type="button" class="primary">Suiv.</button>
+        <button id="printBtn" type="button">Imprimer</button>
+        <a class="ghost-link" href="index.html">Voir le site</a>
+      </div>
+    </header>
+
+    <main id="deck">
+      <section class="slide cover active">
+        <div class="content">
+          <div class="eyebrow">Projet web BTS SIO SLAM</div>
+          <h1><span class="gold">Iris Paris Hub</span><br>Espace étudiant</h1>
+          <p class="lead">Une application web qui centralise la vie étudiante IRIS Paris : informations, services, chat de promo, assistant IA, événements et profil personnel.</p>
+          <div class="pill-row">
+            <span class="pill">HTML</span>
+            <span class="pill">CSS</span>
+            <span class="pill">JavaScript</span>
+            <span class="pill">Firebase optionnel</span>
+            <span class="pill">LocalStorage</span>
+          </div>
+        </div>
+        <aside class="notes">
+          <strong>À dire</strong>
+          On présente un site pensé comme un portail étudiant. L'idée est simple : un étudiant arrive sur une page publique, découvre les services, puis se connecte pour accéder à son espace personnel.
+        </aside>
+      </section>
+
+      <section class="slide">
+        <div class="content">
+          <div class="eyebrow">Utilité du site</div>
+          <h2>Pourquoi ce site existe ?</h2>
+          <div class="grid three">
+            <div class="card"><strong>Centraliser</strong><span>Réunir services, agenda, bons plans, contact et informations utiles au même endroit.</span></div>
+            <div class="card"><strong>Aider</strong><span>Donner un assistant IA, une FAQ, une météo campus et des ressources concrètes.</span></div>
+            <div class="card"><strong>Connecter</strong><span>Permettre aux étudiants d'échanger par promotion grâce au chat privé.</span></div>
+          </div>
+          <p>Le site répond au problème des informations dispersées et rend la vie étudiante plus simple, plus lisible et plus interactive.</p>
+        </div>
+        <aside class="notes">
+          <strong>À dire</strong>
+          On peut expliquer que l'objectif n'est pas seulement de faire une belle page. Le site doit être utile : il donne accès rapidement aux informations importantes et crée un espace réservé aux étudiants.
+        </aside>
+      </section>
+
+      <section class="slide">
+        <div class="content">
+          <div class="eyebrow">Parcours utilisateur</div>
+          <h2>Du visiteur au tableau de bord</h2>
+          <div class="flow">
+            <div class="step"><b>1</b><strong>Accueil</strong><span>Le visiteur découvre IRIS Paris et l'objectif du hub.</span></div>
+            <div class="step"><b>2</b><strong>Services</strong><span>Il consulte les services, événements, bons plans et FAQ.</span></div>
+            <div class="step"><b>3</b><strong>Inscription</strong><span>Il crée un compte avec email, Google ou Microsoft.</span></div>
+            <div class="step"><b>4</b><strong>Dashboard</strong><span>Il accède à son espace étudiant personnalisé.</span></div>
+            <div class="step"><b>5</b><strong>Usage</strong><span>Il utilise le chat, l'IA, le quiz, les notifications et le profil.</span></div>
+          </div>
+        </div>
+        <aside class="notes">
+          <strong>À dire</strong>
+          Cette slide sert à montrer que le site n'est pas une succession de pages au hasard. Il y a un vrai scénario : découvrir, s'inscrire, puis utiliser des fonctionnalités connectées.
+        </aside>
+      </section>
+
+      <section class="slide">
+        <div class="content">
+          <div class="eyebrow">Maquette et design</div>
+          <h2>Une identité visuelle cohérente</h2>
+          <div class="split">
+            <div class="code-list">
+              <div class="code-line success"><strong>Identité</strong> : bleu nuit pour rappeler le sérieux du numérique, accent or pour le logo et les actions importantes.</div>
+              <div class="code-line"><strong>Hiérarchie</strong> : très grands titres pour les sections, textes plus discrets pour les détails.</div>
+              <div class="code-line"><strong>Composants</strong> : cartes, boutons, badges, grilles photos, sidebar et modale d'authentification.</div>
+              <div class="code-line"><strong>Responsive</strong> : menu burger sur mobile, grilles adaptatives et sections lisibles.</div>
+            </div>
+            <div class="visual"><img src="img/ambiance.jpg" alt="Ambiance campus"></div>
+          </div>
+        </div>
+        <aside class="notes">
+          <strong>Pour la personne design</strong>
+          Elle peut insister sur les choix de couleurs, la typographie, la lisibilité, les images campus et l'organisation en sections. La maquette guide l'utilisateur sans le perdre.
+        </aside>
+      </section>
+
+      <section class="slide">
+        <div class="content">
+          <div class="eyebrow">Page publique</div>
+          <h2>Ce qu'on voit sans connexion</h2>
+          <div class="grid">
+            <div class="card"><strong>Hero</strong><span>Titre fort, photos flottantes, boutons pour créer un espace ou explorer les services.</span></div>
+            <div class="card"><strong>Services</strong><span>Agenda, assistant IA, chat promo, ressources, associations et bons plans.</span></div>
+            <div class="card"><strong>Vie campus</strong><span>Photos, statistiques, témoignages et FAQ pour rendre le site vivant.</span></div>
+            <div class="card"><strong>Contact</strong><span>Formulaire qui construit un lien <code>mailto:</code> vers l'adresse configurée.</span></div>
+          </div>
+        </div>
+        <aside class="notes">
+          <strong>À dire</strong>
+          La page publique sert de vitrine et d'orientation. Elle donne envie d'utiliser le site, mais elle donne aussi déjà des informations utiles sans obliger à se connecter.
+        </aside>
+      </section>
+
+      <section class="slide">
+        <div class="content">
+          <div class="eyebrow">Espace connecté</div>
+          <h2>Le dashboard étudiant</h2>
+          <div class="grid">
+            <div class="card"><strong>Sidebar</strong><span>Navigation fixe vers Accueil, Chat, Assistant IA, Événements, Quiz, Profil et Notifications.</span></div>
+            <div class="card"><strong>Accueil</strong><span>Statistiques personnelles, actualités, météo de Paris et compte à rebours du prochain événement.</span></div>
+            <div class="card"><strong>Profil</strong><span>Avatar, bio, nom, promo, thème sombre ou clair, couleur d'accent.</span></div>
+            <div class="card"><strong>Notifications</strong><span>Liste d'informations importantes avec badge pour signaler les nouveautés.</span></div>
+          </div>
+        </div>
+        <aside class="notes">
+          <strong>À dire</strong>
+          Après connexion, le site change de rôle : il devient un outil de travail et de vie étudiante. La sidebar rend la navigation plus rapide qu'une page classique.
+        </aside>
+      </section>
+
+      <section class="slide">
+        <div class="content">
+          <div class="eyebrow">Architecture technique</div>
+          <h2>Comment le code est organisé</h2>
+          <div class="code-list">
+            <div class="code-line"><code>index.html</code> contient la structure HTML, la configuration <code>CFG</code>, les modales, le dashboard et le JavaScript principal.</div>
+            <div class="code-line"><code>style.css</code> contient le design system : variables CSS, thèmes, grilles, animations, responsive et composants.</div>
+            <div class="code-line"><code>img/</code> contient les visuels du campus utilisés dans le hero et les sections.</div>
+            <div class="code-line success">Le projet est en HTML, CSS et JavaScript pur : pas besoin de framework ni de compilation pour le lancer.</div>
+          </div>
+        </div>
+        <aside class="notes">
+          <strong>Pour la personne code</strong>
+          Elle peut expliquer que le projet est volontairement simple à déployer. On ouvre <code>index.html</code> dans le navigateur, et les fonctionnalités JavaScript s'exécutent côté client.
+        </aside>
+      </section>
+
+      <section class="slide">
+        <div class="content">
+          <div class="eyebrow">Authentification et données</div>
+          <h2>Comptes, session et préférences</h2>
+          <div class="grid">
+            <div class="tech"><strong><code>DB</code></strong><span>Objet JavaScript qui lit et écrit les utilisateurs, la session et les préférences dans <code>localStorage</code>.</span></div>
+            <div class="tech"><strong><code>openAuth()</code></strong><span>Ouvre la modale et choisit l'onglet connexion ou inscription.</span></div>
+            <div class="tech"><strong><code>emailRegister()</code></strong><span>Valide le formulaire, crée l'utilisateur et sauvegarde son profil localement.</span></div>
+            <div class="tech"><strong><code>openDash()</code></strong><span>Cache la vitrine publique, affiche le dashboard et initialise les widgets.</span></div>
+          </div>
+          <div class="code-line warning">Limite à connaître : pour un vrai site en production, les mots de passe ne doivent pas être stockés dans <code>localStorage</code>. Ici, c'est un prototype pédagogique.</div>
+        </div>
+        <aside class="notes">
+          <strong>À dire</strong>
+          On peut dire que <code>localStorage</code> permet de garder les données dans le navigateur. C'est pratique pour une démo et un projet scolaire, mais une vraie application utiliserait un backend sécurisé.
+        </aside>
+      </section>
+
+      <section class="slide">
+        <div class="content">
+          <div class="eyebrow">Chat de promotion</div>
+          <h2>Temps réel avec fallback local</h2>
+          <div class="grid">
+            <div class="card"><strong>Verrou par promo</strong><span>L'utilisateur ne peut accéder qu'au chat lié à sa filière ou promotion.</span></div>
+            <div class="card"><strong>Firebase</strong><span>Si la configuration est active, les messages passent par Firebase Realtime Database.</span></div>
+            <div class="card"><strong>Fallback</strong><span>Si Firebase ne répond pas, le site bascule en mode local avec <code>localStorage</code>.</span></div>
+            <div class="card"><strong>Sécurité affichage</strong><span>La fonction <code>esc()</code> échappe le HTML pour réduire le risque d'injection XSS dans les messages.</span></div>
+          </div>
+        </div>
+        <aside class="notes">
+          <strong>À dire</strong>
+          Cette partie montre une vraie logique applicative : il y a une gestion d'accès, une présence en ligne, des messages, des réactions et un mode secours si le service externe n'est pas disponible.
+        </aside>
+      </section>
+
+      <section class="slide">
+        <div class="content">
+          <div class="eyebrow">IA, quiz et API</div>
+          <h2>Des fonctions utiles au quotidien</h2>
+          <div class="grid">
+            <div class="tech"><strong>Assistant IA</strong><span><code>AI_KB</code> et <code>AI_TOPICS</code> donnent une réponse locale si l'API externe n'est pas configurée.</span></div>
+            <div class="tech"><strong>Quiz étudiant</strong><span><code>QUIZ_QUESTIONS</code> contient les questions, points, réponses et explications.</span></div>
+            <div class="tech"><strong>Météo Paris</strong><span><code>initWeather()</code> interroge Open-Meteo, une API gratuite sans clé.</span></div>
+            <div class="tech"><strong>Compte à rebours</strong><span><code>initCountdown()</code> met à jour les jours, heures, minutes et secondes avec <code>setInterval</code>.</span></div>
+          </div>
+        </div>
+        <aside class="notes">
+          <strong>À dire</strong>
+          Le but n'est pas d'ajouter des gadgets. Chaque module apporte quelque chose : aide aux révisions, culture tech, informations campus ou repère temporel avant un événement.
+        </aside>
+      </section>
+
+      <section class="slide">
+        <div class="content">
+          <div class="eyebrow">Interactions frontend</div>
+          <h2>Les détails qui rendent le site vivant</h2>
+          <div class="code-list">
+            <div class="code-line"><code>IntersectionObserver</code> déclenche les animations d'apparition quand les sections entrent dans l'écran.</div>
+            <div class="code-line"><code>setTheme()</code> et <code>setAccent()</code> modifient les attributs <code>data-theme</code> et <code>data-accent</code> sur la balise <code>html</code>.</div>
+            <div class="code-line"><code>glowCard()</code> calcule la position de la souris et transmet les coordonnées à CSS avec <code>--mx</code> et <code>--my</code>.</div>
+            <div class="code-line"><code>toast()</code> affiche une notification temporaire pour confirmer une action utilisateur.</div>
+          </div>
+        </div>
+        <aside class="notes">
+          <strong>À dire</strong>
+          Cette slide est parfaite pour montrer le lien entre design et code. Le design donne l'idée visuelle, et JavaScript rend l'interface réactive.
+        </aside>
+      </section>
+
+      <section class="slide">
+        <div class="content">
+          <div class="eyebrow">Répartition et bilan</div>
+          <h2>Ce que chacun peut présenter</h2>
+          <div class="grid">
+            <div class="card"><strong>Maquette et design</strong><span>Objectif utilisateur, identité IRIS, choix des couleurs, organisation des sections, responsive et expérience visuelle.</span></div>
+            <div class="card"><strong>Code et technique</strong><span>Structure HTML, CSS variables, JavaScript, localStorage, authentification, chat, IA, quiz et API.</span></div>
+            <div class="card"><strong>Points forts</strong><span>Site complet, interactif, personnalisable, ouvrable sans serveur et pensé pour les étudiants.</span></div>
+            <div class="card"><strong>Améliorations</strong><span>Backend sécurisé, vraie gestion administrateur des événements, règles Firebase renforcées et notifications dynamiques.</span></div>
+          </div>
+          <p class="lead">Conclusion : Iris Paris Hub transforme une simple vitrine en véritable espace étudiant interactif.</p>
+        </div>
+        <aside class="notes">
+          <strong>Phrase de fin</strong>
+          Notre site montre comment une interface claire et du JavaScript bien organisé peuvent créer un outil utile pour la vie étudiante. Il reste perfectible, mais il présente déjà une base complète et démontrable.
+        </aside>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <span id="counter">Slide 1 / 12</span>
+      <span>Flèches clavier ou boutons pour naviguer</span>
+      <div class="dots" id="dots" aria-hidden="true"></div>
+    </footer>
+  </div>
+
+  <script>
+    const slides = Array.from(document.querySelectorAll('.slide'));
+    const dots = document.getElementById('dots');
+    const counter = document.getElementById('counter');
+    const progressBar = document.getElementById('progressBar');
+    let index = 0;
+
+    slides.forEach((_, i) => {
+      const dot = document.createElement('span');
+      dot.className = 'dot';
+      dot.addEventListener('click', () => show(i));
+      dots.appendChild(dot);
+    });
+
+    function show(nextIndex) {
+      index = Math.max(0, Math.min(slides.length - 1, nextIndex));
+      slides.forEach((slide, i) => slide.classList.toggle('active', i === index));
+      Array.from(dots.children).forEach((dot, i) => dot.classList.toggle('active', i === index));
+      counter.textContent = `Slide ${index + 1} / ${slides.length}`;
+      progressBar.style.width = `${((index + 1) / slides.length) * 100}%`;
+      document.getElementById('prevBtn').disabled = index === 0;
+      document.getElementById('nextBtn').textContent = index === slides.length - 1 ? 'Fin' : 'Suiv.';
+    }
+
+    function next() {
+      if (index < slides.length - 1) show(index + 1);
+    }
+
+    function prev() {
+      if (index > 0) show(index - 1);
+    }
+
+    document.getElementById('nextBtn').addEventListener('click', next);
+    document.getElementById('prevBtn').addEventListener('click', prev);
+    document.getElementById('printBtn').addEventListener('click', () => window.print());
+
+    document.addEventListener('keydown', event => {
+      if (event.key === 'ArrowRight' || event.key === ' ') next();
+      if (event.key === 'ArrowLeft') prev();
+      if (event.key === 'Home') show(0);
+      if (event.key === 'End') show(slides.length - 1);
+    });
+
+    show(0);
+  </script>
+</body>
+</html>

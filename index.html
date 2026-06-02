@@ -20,6 +20,7 @@ const CFG = {
   FB_PROJECT_ID:    "iris-paris-hub",
   FB_APP_ID:        "1:199364662600:web:6777f655a6bdda31c34f7d",
   CONTACT_EMAIL:    "marcdmr79@gmail.com",    // ← destinataire du formulaire de contact
+  ANTHROPIC_KEY:    "",                        // ← clé API Claude (optionnel, pour l'IA)
 };
 </script>
 
@@ -52,18 +53,20 @@ try {
   window._fbPush  = (room, data) => push(ref(db, `chat/${room}`), { ...data, ts: serverTimestamp() });
   window._fbListen = (room, cb) => {
     const q = query(ref(db, `chat/${room}`), orderByChild('ts'), limitToLast(80));
-    return onValue(q, snap => { const msgs=[]; snap.forEach(c=>msgs.push({id:c.key,...c.val()})); cb(msgs); });
+    return onValue(q,
+      snap => { const msgs=[]; snap.forEach(c=>msgs.push({id:c.key,...c.val()})); cb(msgs); },
+      err => cb([], err)
+    );
   };
   window._fbPresence = (room, user, cb) => {
     const id = (user.email || user.first || 'user').replace(/[.#$/\[\]]/g, '_');
     const pRef = ref(db, `presence/${room}/${id}`);
-    set(pRef, { name:user.first || 'Étudiant', email:user.email || '', ts:serverTimestamp() });
+    set(pRef, { name:user.first || 'Etudiant', email:user.email || '', ts:serverTimestamp() }).catch(err => cb(null, err));
     onDisconnect(pRef).remove();
-    const unsubscribe = onValue(ref(db, `presence/${room}`), snap => {
-      let count = 0;
-      snap.forEach(() => count++);
-      cb(count);
-    });
+    const unsubscribe = onValue(ref(db, `presence/${room}`),
+      snap => { let count = 0; snap.forEach(() => count++); cb(count); },
+      err => cb(null, err)
+    );
     return () => { unsubscribe(); remove(pRef); };
   };
 } catch(e) {
@@ -79,7 +82,7 @@ try {
 
 <!-- ════ LOADER ════ -->
 <div id="loader">
-  <div class="ld-brand"><img class="ld-logo-img" src="https://tse1.mm.bing.net/th/id/OIP._q3jXSKBld_lZj-VoCpQSAHaHa?rs=1&pid=ImgDetMain&o=7&rm=3" alt="IRIS Paris" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="ld-fallback" style="display:none"><div class="ld-box">IRIS</div><div class="ld-name">PARIS</div></div></div>
+  <div class="ld-brand"><img class="ld-logo-img" src="https://ecoleiris.fr/themes/custom/iris_2024/logo.svg" alt="IRIS Paris" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="ld-fallback" style="display:none"><div class="ld-box">IRIS</div><div class="ld-name">PARIS</div></div></div>
   <div class="ld-bar"><div class="ld-fill" id="lf"></div></div>
   <div class="ld-pct" id="lp">0%</div>
 </div>
@@ -91,6 +94,8 @@ try {
 <!-- ════ MENU MOBILE ════ -->
 <div class="mob-menu" id="mobMenu">
   <a href="#services" onclick="closeMob()">Services</a>
+  <a href="#actus" onclick="closeMob()">Actus</a>
+  <a href="#parcours-tech" onclick="closeMob()">Parcours Tech</a>
   <a href="#evenements" onclick="closeMob()">Événements</a>
   <a href="#bons-plans" onclick="closeMob()">Bons Plans</a>
   <a href="#temoignages" onclick="closeMob()">Témoignages</a>
@@ -102,6 +107,8 @@ try {
   <a class="nav-brand" href="#"><div class="nav-logo">IRIS</div><span class="nav-school">PARIS</span></a>
   <ul class="nav-links">
     <li><a href="#services">Services</a></li>
+    <li><a href="#actus">Actus</a></li>
+    <li><a href="#parcours-tech">Parcours Tech</a></li>
     <li><a href="#evenements">Événements</a></li>
     <li><a href="#bons-plans">Bons Plans</a></li>
     <li><a href="#temoignages">Témoignages</a></li>
@@ -173,11 +180,101 @@ try {
   <p class="sd reveal">L'école met à ta disposition une multitude de ressources pour réussir.</p>
   <div class="cards-g reveal">
     <div class="fc" onmousemove="glowCard(this,event)"><div class="fc-ico">📅</div><div class="fc-title">Agenda</div><div class="fc-desc">Événements, dates importantes et activités du campus centralisés.</div><a class="fc-lnk" href="#evenements">Voir l'agenda →</a></div>
-    <div class="fc" onmousemove="glowCard(this,event)"><div class="fc-ico">🤖</div><div class="fc-title">Assistant IA</div><div class="fc-desc">Une IA intégrée pour répondre à toutes tes questions sur la vie étudiante.</div><a class="fc-lnk" href="#" onclick="openAuth('register');return false;">Accéder →</a></div>
+    <div class="fc" onmousemove="glowCard(this,event)"><div class="fc-ico">🤖</div><div class="fc-title">Assistant IA</div><div class="fc-desc">Une IA orientée campus, développement, cybersécurité, alternance et méthodes de projet.</div><a class="fc-lnk" href="#" onclick="openAuth('register');return false;">Accéder →</a></div>
     <div class="fc" onmousemove="glowCard(this,event)"><div class="fc-ico">💬</div><div class="fc-title">Chat Promo</div><div class="fc-desc">Discussions en temps réel par promotion. Chaque promo a son espace privé.</div><a class="fc-lnk" href="#" onclick="openAuth('register');return false;">Rejoindre →</a></div>
-    <div class="fc" onmousemove="glowCard(this,event)"><div class="fc-ico">🗂️</div><div class="fc-title">Ressources</div><div class="fc-desc">ENT, bibliothèque numérique, mails scolaires, outils pédagogiques.</div><a class="fc-lnk" href="#">Accéder →</a></div>
-    <div class="fc" onmousemove="glowCard(this,event)"><div class="fc-ico">🎭</div><div class="fc-title">Associations</div><div class="fc-desc">42 associations : sport, culture, art, gaming, humanitaire.</div><a class="fc-lnk" href="#">Découvrir →</a></div>
+    <div class="fc" onmousemove="glowCard(this,event)"><div class="fc-ico">🗂️</div><div class="fc-title">Ressources</div><div class="fc-desc">ENT, NetYpareo, GitHub Student Pack, outils dev, docs et ressources pédagogiques.</div><a class="fc-lnk" href="#parcours-tech">Accéder →</a></div>
+    <div class="fc" onmousemove="glowCard(this,event)"><div class="fc-ico">🧪</div><div class="fc-title">Lab Dev & Cyber</div><div class="fc-desc">Roadmaps, exercices, veille, portfolio et bonnes pratiques pour progresser en informatique.</div><a class="fc-lnk" href="#parcours-tech">Découvrir →</a></div>
     <div class="fc" onmousemove="glowCard(this,event)"><div class="fc-ico">💡</div><div class="fc-title">Bons Plans</div><div class="fc-desc">Transport, logement, cantine, réductions. Vivre à Paris sans se ruiner.</div><a class="fc-lnk" href="#bons-plans">Voir →</a></div>
+  </div>
+</div></section>
+
+<!-- ════ ACTUALITÉS CAMPUS ════ -->
+<section id="actus"><div class="si">
+  <div class="sl">Actus campus</div>
+  <h2 class="st reveal">À suivre<br>en ce moment</h2>
+  <p class="sd reveal">Mise à jour du 2 juin 2026 : les prochaines dates et ressources utiles pour les élèves IRIS Paris en informatique, développement, cybersécurité et IA.</p>
+  <div class="news-g reveal">
+    <article class="news-card hot">
+      <div class="news-k">Officiel IRIS</div>
+      <h3>JPO Paris : 27 juin, 4 juillet et 18 juillet 2026</h3>
+      <p>Les prochaines Journées Portes Ouvertes permettent de visiter le campus, rencontrer l'équipe pédagogique et découvrir les formations informatique.</p>
+      <a href="https://ecoleiris.fr/evenements" target="_blank" rel="noopener">Voir les événements →</a>
+    </article>
+    <article class="news-card">
+      <div class="news-k">Cybersécurité</div>
+      <h3>Cyber au coeur des parcours IRIS</h3>
+      <p>Bac Pro CIEL, BTS SIO SISR, Bachelor cyber et infrastructures : le site met maintenant davantage en avant les bases réseau, sécurité et réponse à incident.</p>
+      <a href="https://ecoleiris.fr/formations/bachelor-cybersecurite-gestion-reseaux" target="_blank" rel="noopener">Explorer le bachelor cyber →</a>
+    </article>
+    <article class="news-card">
+      <div class="news-k">Développement</div>
+      <h3>Focus SLAM et développement web</h3>
+      <p>La partie développement insiste sur les projets concrets : interfaces web, bases de données, API, sécurité applicative et mise en ligne.</p>
+      <a href="https://ecoleiris.fr/formations/bts-sio-option-slam" target="_blank" rel="noopener">Voir BTS SIO SLAM →</a>
+    </article>
+    <article class="news-card">
+      <div class="news-k">IA & data</div>
+      <h3>L'IA devient un vrai outil de travail</h3>
+      <p>L'assistant a été enrichi pour aider sur prompts, révisions, debug, projets, portfolio, stage, cyber et usages responsables de l'IA.</p>
+      <a href="https://ecoleiris.fr/news/blog/se-former-a-l-ia-et-la-data" target="_blank" rel="noopener">Lire sur IA & data →</a>
+    </article>
+  </div>
+  <div class="todo-panel reveal">
+    <div>
+      <div class="sl mini">À faire maintenant</div>
+      <h3>Checklist élève informatique</h3>
+    </div>
+    <div class="todo-g">
+      <div class="todo-i"><strong>Portfolio GitHub</strong><span>Publie 2 projets propres avec README, captures et démo.</span></div>
+      <div class="todo-i"><strong>Cyber hygiene</strong><span>Active MFA, révise Linux, réseau, OWASP et bonnes pratiques RGPD.</span></div>
+      <div class="todo-i"><strong>Alternance / stage</strong><span>Prépare CV, pitch de 30 secondes et liste de 20 entreprises.</span></div>
+      <div class="todo-i"><strong>Veille IA</strong><span>Teste les prompts, cite tes sources et vérifie les réponses avant rendu.</span></div>
+    </div>
+  </div>
+</div></section>
+
+<!-- ════ PARCOURS TECH ════ -->
+<section id="parcours-tech" style="background:var(--bg2)"><div class="si">
+  <div class="sl">Parcours Tech</div>
+  <h2 class="st reveal">Développement,<br>cyber et IA</h2>
+  <p class="sd reveal">Une section pensée pour les élèves qui veulent savoir quoi travailler concrètement selon leur orientation informatique.</p>
+  <div class="tracks-g reveal">
+    <article class="track-card">
+      <div class="track-top"><span>01</span><h3>Développement & SLAM</h3></div>
+      <p>Objectif : concevoir des applications utiles, maintenables et sécurisées.</p>
+      <ul>
+        <li>HTML, CSS, JavaScript, PHP ou framework web</li>
+        <li>Bases de données, API REST, authentification</li>
+        <li>Tests, documentation, accessibilité et sécurité du code</li>
+      </ul>
+    </article>
+    <article class="track-card">
+      <div class="track-top"><span>02</span><h3>Cybersécurité & SISR</h3></div>
+      <p>Objectif : administrer, surveiller et sécuriser des infrastructures.</p>
+      <ul>
+        <li>Linux, Windows Server, réseau, VLAN, firewall</li>
+        <li>Virtualisation, supervision, sauvegarde, durcissement</li>
+        <li>Analyse de risques, logs, réponse à incident, OWASP</li>
+      </ul>
+    </article>
+    <article class="track-card">
+      <div class="track-top"><span>03</span><h3>IA, data & automatisation</h3></div>
+      <p>Objectif : utiliser l'IA comme assistant sans perdre l'esprit critique.</p>
+      <ul>
+        <li>Prompts clairs, vérification des sources, limites des modèles</li>
+        <li>Python, données, API IA, scripts d'automatisation</li>
+        <li>RGPD, anonymisation et usages responsables en projet</li>
+      </ul>
+    </article>
+    <article class="track-card">
+      <div class="track-top"><span>04</span><h3>DevOps & professionnalisation</h3></div>
+      <p>Objectif : livrer un projet propre comme en entreprise.</p>
+      <ul>
+        <li>Git, branches courtes, README, issues et démonstration</li>
+        <li>Docker, CI/CD, hébergement, monitoring de base</li>
+        <li>CV, alternance, stage et présentation orale technique</li>
+      </ul>
+    </article>
   </div>
 </div></section>
 
@@ -187,12 +284,10 @@ try {
   <h2 class="st reveal">Événements à venir</h2>
   <p class="sd reveal">Ne rate aucun moment de la vie du campus.</p>
   <div class="events-list reveal">
-    <div class="ev"><div><div class="ev-day">12</div><div class="ev-mo">Mai</div></div><div><div class="ev-title">Soirée d'intégration BTS SIO</div><div class="ev-loc">📍 Amphi A · 19h00</div></div><div class="ev-badge">Soirée</div></div>
-    <div class="ev"><div><div class="ev-day">18</div><div class="ev-mo">Mai</div></div><div><div class="ev-title">Hackathon 24h Développement Web</div><div class="ev-loc">📍 Salles Info · 09h00</div></div><div class="ev-badge">Compétition</div></div>
-    <div class="ev"><div><div class="ev-day">24</div><div class="ev-mo">Mai</div></div><div><div class="ev-title">Forum des Associations</div><div class="ev-loc">📍 Hall Principal · 10h00</div></div><div class="ev-badge">Forum</div></div>
-    <div class="ev"><div><div class="ev-day">02</div><div class="ev-mo">Juin</div></div><div><div class="ev-title">Journée Portes Ouvertes</div><div class="ev-loc">📍 Campus entier · 10h00</div></div><div class="ev-badge">Tous</div></div>
-    <div class="ev"><div><div class="ev-day">15</div><div class="ev-mo">Juin</div></div><div><div class="ev-title">Tournoi FIFA inter-promos</div><div class="ev-loc">📍 Salle BDE · 14h00</div></div><div class="ev-badge">Gaming</div></div>
-    <div class="ev"><div><div class="ev-day">28</div><div class="ev-mo">Juin</div></div><div><div class="ev-title">Iris Gala — Soirée de fin d'année</div><div class="ev-loc">📍 Rooftop Paris · 20h00</div></div><div class="ev-badge">Gala</div></div>
+    <div class="ev"><div><div class="ev-day">27</div><div class="ev-mo">Juin</div></div><div><div class="ev-title">Journée Portes Ouvertes - IRIS Paris</div><div class="ev-loc">Paris · 10h00-15h30 · Source officielle IRIS</div></div><div class="ev-badge">Officiel</div></div>
+    <div class="ev"><div><div class="ev-day">04</div><div class="ev-mo">Juil</div></div><div><div class="ev-title">Journée Portes Ouvertes - IRIS Paris</div><div class="ev-loc">Paris · 10h00-15h30 · Source officielle IRIS</div></div><div class="ev-badge">Officiel</div></div>
+    <div class="ev"><div><div class="ev-day">18</div><div class="ev-mo">Juil</div></div><div><div class="ev-title">Journée Portes Ouvertes - IRIS Paris</div><div class="ev-loc">Paris · 10h00-15h30 · Source officielle IRIS</div></div><div class="ev-badge">Officiel</div></div>
+    <div class="ev"><div><div class="ev-day">Juin</div><div class="ev-mo">À faire</div></div><div><div class="ev-title">Sprint portfolio dev / cyber</div><div class="ev-loc">Checklist projet : README, captures, GitHub, sécurité, démo orale</div></div><div class="ev-badge">Conseil</div></div>
   </div>
 </div></section>
 
@@ -268,7 +363,7 @@ try {
   <p>© 2025 Iris Paris · Projet BTS SIO SLAM · Groupe MediaSchool</p>
   <div class="ft-links">
     <a href="#accueil">Accueil</a><a href="#services">Services</a>
-    <a href="#evenements">Événements</a><a href="#contact">Contact</a><a href="#">Mentions légales</a>
+    <a href="#actus">Actus</a><a href="#parcours-tech">Parcours Tech</a><a href="#evenements">Événements</a><a href="#contact">Contact</a>
   </div>
 </footer>
 
@@ -401,7 +496,7 @@ try {
         <!-- 4 stats rapides -->
         <div class="dst">
           <div class="dsc"><div class="dsc-n" id="dsMsgs">0</div><div class="dsc-l">Messages</div></div>
-          <div class="dsc"><div class="dsc-n">6</div><div class="dsc-l">Événements</div></div>
+          <div class="dsc"><div class="dsc-n">3</div><div class="dsc-l">JPO à venir</div></div>
           <div class="dsc"><div class="dsc-n" id="dsEvJ">0</div><div class="dsc-l">Participations</div></div>
           <div class="dsc"><div class="dsc-n" id="dsDays">1</div><div class="dsc-l">Jours sur Iris Hub</div></div>
         </div>
@@ -410,16 +505,16 @@ try {
           <div class="fcard">
             <div class="fcH"><span class="fcH-t">📢 Actualités</span><span style="font-size:.7rem;color:var(--muted)">Aujourd'hui</span></div>
             <div class="fcB">
-              <div class="ai pin"><div class="ai-tag">📌 Épinglé</div><div class="ai-ttl">Inscription Hackathon ouverte !</div><div class="ai-sub">Places limitées · avant le 10 mai</div></div>
-              <div class="ai"><div class="ai-sub" style="color:var(--muted);font-size:.72rem">Il y a 2h</div><div class="ai-ttl">Forum des associations : inscriptions ouvertes.</div></div>
-              <div class="ai"><div class="ai-sub" style="color:var(--muted);font-size:.72rem">Hier</div><div class="ai-ttl">Résultats du quiz vendredi sur l'ENT.</div></div>
+              <div class="ai pin"><div class="ai-tag">📌 Officiel IRIS</div><div class="ai-ttl">JPO Paris à venir : 27 juin, 4 juillet et 18 juillet 2026.</div><div class="ai-sub">Visite campus, formations informatique, échanges pédagogiques</div></div>
+              <div class="ai"><div class="ai-sub" style="color:var(--muted);font-size:.72rem">Nouveau</div><div class="ai-ttl">Assistant IA enrichi : dev, cyber, portfolio, stage et alternance.</div></div>
+              <div class="ai"><div class="ai-sub" style="color:var(--muted);font-size:.72rem">À faire</div><div class="ai-ttl">Prépare 2 projets GitHub propres avant tes candidatures.</div></div>
             </div>
           </div>
           <div class="fcard">
             <div class="fcH"><span class="fcH-t">📅 Prochains events</span><a href="#" onclick="navTo('events')" style="font-size:.7rem;color:var(--ac);text-decoration:none">Tout voir →</a></div>
             <div class="fcB">
-              <div class="ai" style="display:flex;gap:.7rem;align-items:center"><div style="text-align:center;min-width:34px"><div style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;color:var(--ac);line-height:1">12</div><div style="font-size:.6rem;text-transform:uppercase;color:var(--muted)">Mai</div></div><div><div style="font-size:.82rem;font-weight:500">Soirée d'intégration</div><div style="font-size:.74rem;color:var(--muted)">Amphi A · 19h00</div></div></div>
-              <div class="ai" style="display:flex;gap:.7rem;align-items:center"><div style="text-align:center;min-width:34px"><div style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;color:var(--ac);line-height:1">18</div><div style="font-size:.6rem;text-transform:uppercase;color:var(--muted)">Mai</div></div><div><div style="font-size:.82rem;font-weight:500">Hackathon 24h</div><div style="font-size:.74rem;color:var(--muted)">Salles Info · 09h00</div></div></div>
+              <div class="ai" style="display:flex;gap:.7rem;align-items:center"><div style="text-align:center;min-width:34px"><div style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;color:var(--ac);line-height:1">27</div><div style="font-size:.6rem;text-transform:uppercase;color:var(--muted)">Juin</div></div><div><div style="font-size:.82rem;font-weight:500">JPO IRIS Paris</div><div style="font-size:.74rem;color:var(--muted)">10h00-15h30 · Officiel</div></div></div>
+              <div class="ai" style="display:flex;gap:.7rem;align-items:center"><div style="text-align:center;min-width:34px"><div style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;color:var(--ac);line-height:1">04</div><div style="font-size:.6rem;text-transform:uppercase;color:var(--muted)">Juil</div></div><div><div style="font-size:.82rem;font-weight:500">JPO IRIS Paris</div><div style="font-size:.74rem;color:var(--muted)">10h00-15h30 · Officiel</div></div></div>
             </div>
           </div>
         </div>
@@ -437,7 +532,7 @@ try {
           <!-- Compte à rebours vers le prochain événement -->
           <div class="countdown-widget">
             <div class="cw-label">Prochain événement</div>
-            <div class="cw-event">🎉 Soirée d'intégration BTS SIO</div>
+            <div class="cw-event" id="cwEventName">JPO IRIS Paris - 27 juin 2026</div>
             <div class="cw-grid">
               <div class="cw-unit"><div class="cw-num" id="cwD">--</div><div class="cw-lbl">Jours</div></div>
               <div class="cw-unit"><div class="cw-num" id="cwH">--</div><div class="cw-lbl">Heures</div></div>
@@ -480,12 +575,14 @@ try {
           </div>
           <!-- Suggestions rapides cliquables -->
           <div class="ai-sugs">
-            <button class="ai-sug" onclick="askAI('Comment accéder à l\'ENT ?')">ENT</button>
-            <button class="ai-sug" onclick="askAI('Bons plans transport Paris ?')">Transport</button>
-            <button class="ai-sug" onclick="askAI('Comment s\'inscrire au hackathon ?')">Hackathon</button>
-            <button class="ai-sug" onclick="askAI('Associations à Iris ?')">Associations</button>
-            <button class="ai-sug" onclick="askAI('Où manger pas cher ?')">Manger</button>
-            <button class="ai-sug" onclick="askAI('Comment obtenir un certificat de scolarité ?')">Certificat</button>
+            <button class="ai-sug" onclick="askAI('Fais-moi un plan de revision BTS SIO sur 7 jours')">Revision</button>
+            <button class="ai-sug" onclick="askAI('Aide-moi a preparer une candidature en alternance')">Alternance</button>
+            <button class="ai-sug" onclick="askAI('Fais-moi une checklist portfolio developpeur cyber')">Portfolio</button>
+            <button class="ai-sug" onclick="askAI('Explique une roadmap cybersécurité pour BTS SIO SISR')">Cyber</button>
+            <button class="ai-sug" onclick="askAI('Aide-moi a organiser un projet web SLAM avec base de donnees et API')">Projet dev</button>
+            <button class="ai-sug" onclick="askAI('Explique-moi comment deboguer une erreur JavaScript')">Debug JS</button>
+            <button class="ai-sug" onclick="askAI('Comment utiliser l IA dans un projet sans tricher ni inventer ?')">IA responsable</button>
+            <button class="ai-sug" onclick="askAI('Donne-moi les bases RGPD et securite a respecter dans un projet')">RGPD</button>
           </div>
           <div class="ai-msgs" id="aiMsgs"></div>
           <div class="ai-inp-row">
@@ -495,18 +592,19 @@ try {
         </div>
       </div>
 
-      <!-- ══ PANEL EVENTS ══ -->
+      <!-- PANEL EVENTS -->
       <div class="panel" id="panel-events">
+        <div style="margin-bottom:1.4rem">
+          <h2 style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:.04em;margin-bottom:.3rem">Événements officiels IRIS Paris</h2>
+          <p style="font-size:.85rem;color:var(--muted)">Source : page officielle des événements IRIS, consultée le 2 juin 2026.</p>
+        </div>
         <div class="evg">
-          <div class="evc"><div class="evc-img"><img src="https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=500&q=75" alt=""></div><div class="evc-bdy"><div class="evc-date">12 Mai · 19h00</div><div class="evc-ttl">Soirée d'intégration BTS SIO</div><div class="evc-loc">📍 Amphi A</div></div><div class="evc-ft"><span style="font-size:.73rem;color:var(--muted)">42 participants</span><button class="ev-att go" onclick="joinEv(this)">Je participe</button></div></div>
-          <div class="evc"><div class="evc-img"><img src="https://images.unsplash.com/photo-1498243691581-b145c3f54a5a?w=500&q=75" alt=""></div><div class="evc-bdy"><div class="evc-date">18 Mai · 09h00</div><div class="evc-ttl">Hackathon 24h Dev Web</div><div class="evc-loc">📍 Salles Informatique</div></div><div class="evc-ft"><span style="font-size:.73rem;color:var(--muted)">28 participants</span><button class="ev-att go" onclick="joinEv(this)">Je participe</button></div></div>
-          <div class="evc"><div class="evc-img"><img src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=500&q=75" alt=""></div><div class="evc-bdy"><div class="evc-date">24 Mai · 10h00</div><div class="evc-ttl">Forum des Associations</div><div class="evc-loc">📍 Hall Principal</div></div><div class="evc-ft"><span style="font-size:.73rem;color:var(--muted)">120 participants</span><button class="ev-att go" onclick="joinEv(this)">Je participe</button></div></div>
-          <div class="evc"><div class="evc-img"><img src="https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=500&q=75" alt=""></div><div class="evc-bdy"><div class="evc-date">15 Juin · 14h00</div><div class="evc-ttl">Tournoi FIFA inter-promos</div><div class="evc-loc">📍 Salle BDE</div></div><div class="evc-ft"><span style="font-size:.73rem;color:var(--muted)">16 participants</span><button class="ev-att go" onclick="joinEv(this)">Je participe</button></div></div>
-          <div class="evc"><div class="evc-img"><img src="https://images.unsplash.com/photo-1519750157634-b6d493a0f77c?w=500&q=75" alt=""></div><div class="evc-bdy"><div class="evc-date">28 Juin · 20h00</div><div class="evc-ttl">Iris Gala — Soirée de fin d'année</div><div class="evc-loc">📍 Rooftop Paris</div></div><div class="evc-ft"><span style="font-size:.73rem;color:var(--muted)">200 participants</span><button class="ev-att go" onclick="joinEv(this)">Je participe</button></div></div>
-          <div class="evc"><div class="evc-img"><img src="https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=500&q=75" alt=""></div><div class="evc-bdy"><div class="evc-date">5 Juin · 14h00</div><div class="evc-ttl">Workshop IA & Prompt Engineering</div><div class="evc-loc">📍 Salle B102</div></div><div class="evc-ft"><span style="font-size:.73rem;color:var(--muted)">25 participants</span><button class="ev-att go" onclick="joinEv(this)">Je participe</button></div></div>
+          <div class="evc"><div class="evc-img"><img src="https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=500&q=75" alt=""></div><div class="evc-bdy"><div class="evc-date">27 Juin 2026 · 10h00-15h30</div><div class="evc-ttl">Journée Portes Ouvertes - IRIS Paris</div><div class="evc-loc">Campus Paris - formations informatique</div></div><div class="evc-ft"><span style="font-size:.73rem;color:var(--muted)">Événement officiel</span><a class="ev-att go" href="https://ecoleiris.fr/evenements/jpo-paris-27-juin-2026" target="_blank" rel="noopener">Voir</a></div></div>
+          <div class="evc"><div class="evc-img"><img src="https://images.unsplash.com/photo-1556761175-b413da4baf72?w=500&q=75" alt=""></div><div class="evc-bdy"><div class="evc-date">4 Juillet 2026 · 10h00-15h30</div><div class="evc-ttl">Journée Portes Ouvertes - IRIS Paris</div><div class="evc-loc">Visite campus, étudiants, pédagogie</div></div><div class="evc-ft"><span style="font-size:.73rem;color:var(--muted)">Événement officiel</span><a class="ev-att go" href="https://ecoleiris.fr/evenements/jpo-paris-4-juillet-2026" target="_blank" rel="noopener">Voir</a></div></div>
+          <div class="evc"><div class="evc-img"><img src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=500&q=75" alt=""></div><div class="evc-bdy"><div class="evc-date">18 Juillet 2026 · 10h00-15h30</div><div class="evc-ttl">Journée Portes Ouvertes - IRIS Paris</div><div class="evc-loc">Dernière date d'été à suivre</div></div><div class="evc-ft"><span style="font-size:.73rem;color:var(--muted)">Événement officiel</span><a class="ev-att go" href="https://ecoleiris.fr/evenements/jpo-paris-18-juillet-2026" target="_blank" rel="noopener">Voir</a></div></div>
+          <div class="evc"><div class="evc-img"><img src="https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=500&q=75" alt=""></div><div class="evc-bdy"><div class="evc-date">À faire cette semaine</div><div class="evc-ttl">Sprint portfolio dev / cyber</div><div class="evc-loc">README, captures, démo, sécurité, CV et pitch alternance</div></div><div class="evc-ft"><span style="font-size:.73rem;color:var(--muted)">Checklist étudiant</span><button class="ev-att go" onclick="navTo('ia'); askAI('Fais-moi une checklist portfolio developpeur cyber pour une alternance')">Aide IA</button></div></div>
         </div>
       </div>
-
       <!-- ══ PANEL QUIZ ══ -->
       <div class="panel" id="panel-quiz">
         <div class="quiz-wrap">
@@ -528,6 +626,7 @@ try {
           </div>
         </div>
       </div>
+
       <!-- ══ PANEL PROFIL ══ -->
       <div class="panel" id="panel-profil">
         <div class="prof-hd">
@@ -586,11 +685,11 @@ try {
       <!-- ══ PANEL NOTIFICATIONS ══ -->
       <div class="panel" id="panel-notifs">
         <div class="notif-l">
-          <div class="nitem unread"><div class="ndot"></div><div><div class="ntxt">🎉 <strong>Hackathon 24h</strong> — inscriptions ouvertes jusqu'au 10 mai !</div><div class="ntime">Il y a 2h</div></div></div>
-          <div class="nitem unread"><div class="ndot"></div><div><div class="ntxt">💬 Nouveau message dans ton chat de promo.</div><div class="ntime">Il y a 4h</div></div></div>
-          <div class="nitem unread"><div class="ndot"></div><div><div class="ntxt">📅 Rappel : Forum des Associations dans 3 jours.</div><div class="ntime">Hier</div></div></div>
-          <div class="nitem"><div class="ndot read"></div><div><div class="ntxt">✅ Ton compte Iris Hub a été créé avec succès.</div><div class="ntime">Il y a 2j</div></div></div>
-          <div class="nitem"><div class="ndot read"></div><div><div class="ntxt">🎓 Bon plan : -20% JetBrains pour les étudiants Iris.</div><div class="ntime">Il y a 3j</div></div></div>
+          <div class="nitem unread"><div class="ndot"></div><div><div class="ntxt">📅 <strong>JPO IRIS Paris</strong> — prochaine date officielle : 27 juin 2026, 10h00-15h30.</div><div class="ntime">Aujourd'hui</div></div></div>
+          <div class="nitem unread"><div class="ndot"></div><div><div class="ntxt">💻 Sprint portfolio : ajoute README, captures, démo et points de sécurité à tes projets.</div><div class="ntime">Cette semaine</div></div></div>
+          <div class="nitem unread"><div class="ndot"></div><div><div class="ntxt">🛡️ Cyber : révise Linux, réseau, MFA, OWASP et réponse à incident.</div><div class="ntime">À faire</div></div></div>
+          <div class="nitem"><div class="ndot read"></div><div><div class="ntxt">🤖 Iris AI répond maintenant aux questions dev, cyber, IA, stage et alternance.</div><div class="ntime">Nouveau</div></div></div>
+          <div class="nitem"><div class="ndot read"></div><div><div class="ntxt">🎓 Pense à préparer CV, LinkedIn et GitHub avant tes candidatures.</div><div class="ntime">Conseil</div></div></div>
         </div>
       </div>
 
@@ -619,7 +718,7 @@ const DEFAULT_AVATARS = [
 
 // Correspondance id_promo → nom affiché
 const PROMO_LABELS = {
-  "bts-sio-decalee":"BTS SIO - Rentree decalee",
+  "bts-slam-1":    "BTS SIO — Rentree decale",
   "bts-slam-1":    "BTS SIO SLAM — 1re année",
   "bts-slam-2":    "BTS SIO SLAM — 2e année",
   "bts-sisr-1":    "BTS SIO SISR — 1re année",
@@ -632,27 +731,80 @@ const PROMO_LABELS = {
 
 // Base de connaissances locale pour l'IA (fallback si API inaccessible)
 const AI_KB = {
-  ent:        "Pour l'ENT, connecte-toi sur **ent.ecoleiris.fr** avec ton email scolaire. En cas de problème, le bureau B204 peut t'aider.",
-  transport:  "Pass Navigo Étudiant ~45€/mois, Vélib' gratuit 30min, RATP tarif réduit -26 ans. La ligne 3 dessert bien le campus.",
-  hackathon:  "Le Hackathon 24h Iris est le **18 mai à 09h00** en salles informatique. Inscris-toi sur l'ENT avant le 10 mai. Équipes de 3 à 5 personnes.",
-  association:"**42 associations** à Iris : BDE, BDS, gaming, coding, musique, humanitaire. Forum le 24 mai pour toutes les rencontrer.",
-  manger:     "Resto U CROUS à 5 min : 3,30 € le repas complet. Cafétéria au RDC. Hank Burger et Saigon Kitchen sont recommandés à proximité.",
-  certificat: "Ton certificat de scolarité est sur l'ENT → **Mes documents**. Téléchargeable en PDF 24h/7j.",
-  wifi:       "Réseau **Eduroam** sur tout le campus. Connecte-toi avec ton email scolaire — configuration automatique ensuite.",
-  logement:   "CROUS résidences U, APL aide au logement, Lokaviz pour les annonces. La colocation dans le 17e est recommandée.",
+  ent: "Pour l'ENT, verifie d'abord ton identifiant scolaire, puis teste la recuperation de mot de passe. Si NetYpareo ou l'ENT bloque encore, garde une capture de l'erreur et contacte l'administration avec l'heure exacte du test.",
+  transport: "Pour venir a IRIS Paris, prepare un trajet principal et un trajet secours. Les etudiants utilisent souvent Navigo, metro, RER, bus ou Velib selon l'horaire; ajoute 10 a 15 minutes de marge les jours d'examen.",
+  evenement: "Pour les evenements IRIS, privilegie toujours la page officielle de l'ecole. Note la date, l'heure, l'adresse et le lien d'inscription dans ton agenda pour eviter les oublis.",
+  association: "Pour t'integrer, vise une activite utile a ton parcours: BDE pour le reseau, coding pour progresser, cyber pour pratiquer, sport pour garder le rythme. Le bon choix est celui que tu peux tenir toute l'annee.",
+  manger: "Pour manger pas cher, compare CROUS, repas prepares et offres etudiantes autour du campus. En periode de cours longue, prevois eau + snack simple: ca evite de perdre de l'energie avant un TP.",
+  certificat: "Pour un certificat de scolarite, cherche d'abord dans l'espace documents de ton portail ecole. Si le document n'apparait pas, demande-le au secretariat avec ton nom, promo et annee scolaire.",
+  wifi: "Pour le Wi-Fi, teste Eduroam avec ton adresse scolaire complete. En cas d'echec: oublie le reseau, reconnecte-toi, puis verifie que la date/heure du PC est correcte.",
+  logement: "Pour le logement, prepare trois pistes: CROUS, colocation et garant/Visale. Garde un dossier pret en PDF: piece d'identite, certificat de scolarite, justificatifs et garant si besoin.",
+  revision: "Plan de revision efficace: 1) liste les chapitres, 2) classe-les par difficulte, 3) fais 45 min de travail + 10 min pause, 4) termine chaque session par 5 questions sans regarder le cours, 5) refais les erreurs le lendemain.",
+  alternance: "Pour l'alternance, prepare un CV clair, 2 projets GitHub propres, un pitch de 30 secondes et une liste de 20 entreprises. Relance poliment apres 5 a 7 jours avec un mail court et precis.",
+  mail: "Structure de mail pro: objet clair, bonjour, contexte en une phrase, demande precise, piece jointe si utile, formule courte. Exemple d'objet: Question sur le rendu du projet JavaScript - Promo BTS SIO.",
+  debug: "Pour deboguer: reproduis l'erreur, lis la console, isole la ligne, verifie les donnees, puis teste une correction minimale. En JS, commence par console.log(type, valeur) et par verifier les selecteurs DOM.",
+  rgpd: "RGPD dans un projet etudiant: collecte seulement les donnees utiles, explique pourquoi, protege l'acces, evite les mots de passe en clair, supprime les donnees inutiles et ne partage rien sans accord.",
+  projet: "Pour un projet en equipe: definissez le besoin, decoupez en tickets, nommez un responsable par fonctionnalite, utilisez Git avec branches courtes, faites une demo chaque semaine et gardez un README a jour.",
+  netypareo: "Avec NetYpareo, le plus fiable est souvent d'utiliser les vues officielles connectees a ton compte. Si ton site ne peut pas telecharger les donnees, ajoute un bouton vers NetYpareo et evite d'inventer un emploi du temps.",
+  firebase: "Pour Firebase: verifie la config, les regles Realtime Database, le chemin utilise par le chat et les erreurs console. Si la base refuse l'ecriture, le site doit afficher un mode local temporaire au lieu de faire croire que tout marche.",
+  dev: "Roadmap developpement: 1) maitrise HTML/CSS/JS, 2) ajoute PHP ou Node, 3) connecte une base SQL, 4) cree une API, 5) securise formulaire/auth, 6) documente avec README, captures et demo. Pour SLAM, montre surtout que ton application repond a un besoin metier.",
+  cyber: "Roadmap cyber/SISR: commence par Linux, reseau IP, DNS, HTTP, VLAN, firewall et virtualisation. Ensuite travaille logs, durcissement, sauvegarde, OWASP, MFA et analyse d'incident. Pour progresser, tiens un carnet de commandes et explique toujours le risque + la correction.",
+  portfolio: "Portfolio efficace: 2 ou 3 projets suffisent si chacun a un README clair, captures, lien demo, stack technique, probleme resolu, schema de donnees, points de securite et ameliorations futures. Ajoute un projet dev et un projet cyber si tu vises une alternance informatique.",
+  stage: "Stage/alternance: prepare CV une page, LinkedIn propre, GitHub lisible, pitch de 30 secondes et tableau de suivi. Cible ESN, PME locales, equipes support, cyber, dev web et infrastructure. Relance apres 5 a 7 jours avec un mail court et une preuve de motivation.",
+  ia: "IA responsable: utilise l'IA pour reformuler, planifier, deboguer et generer des pistes, mais verifie les faits, cite les sources, teste le code et comprends ce que tu rends. Ne colle jamais de donnees personnelles ou de secrets API dans un outil IA.",
+  jpo: "Prochaines JPO IRIS Paris verifiees: 27 juin, 4 juillet et 18 juillet 2026, de 10h00 a 15h30. A preparer: questions sur formation, alternance, rythme, projets, materiel, poursuite d'etudes et debouches.",
+  linux: "Base Linux utile: pwd, ls, cd, cat, less, grep, find, chmod, chown, ps, systemctl, ip a, ss -tulpn, journalctl. Pour apprendre vite, cree une VM et documente chaque commande avec son objectif.",
+  securite_web: "Securite web minimum: echapper les sorties HTML, valider les entrees, utiliser requetes preparees SQL, mots de passe hashes, HTTPS, tokens anti-CSRF si formulaire sensible, regles d'acces claires et aucune cle API dans le code public."
 };
-// Questions du quiz (10 questions tech + vie étudiante)
+
+const AI_TOPICS = [
+  { keys:["ent","portail","netypareo","connexion"], answer:"ent" },
+  { keys:["transport","metro","rer","bus","navigo"], answer:"transport" },
+  { keys:["event","evenement","jpo","portes ouvertes"], answer:"evenement" },
+  { keys:["association","bde","club"], answer:"association" },
+  { keys:["manger","cantine","crous","repas"], answer:"manger" },
+  { keys:["certificat","scolarite","document"], answer:"certificat" },
+  { keys:["wifi","wi-fi","internet","eduroam"], answer:"wifi" },
+  { keys:["logement","coloc","crous","appartement"], answer:"logement" },
+  { keys:["revision","reviser","controle","examen","partiel"], answer:"revision" },
+  { keys:["alternance","cv","stage","entreprise","candidature"], answer:"alternance" },
+  { keys:["mail","email","prof","professeur"], answer:"mail" },
+  { keys:["debug","bug","erreur","javascript","console"], answer:"debug" },
+  { keys:["rgpd","donnee","privacy","confidentialite"], answer:"rgpd" },
+  { keys:["projet","equipe","git","github","planning"], answer:"projet" },
+  { keys:["firebase","database","chat","temps reel"], answer:"firebase" },
+  { keys:["developpement","developpeur","slam","application","api","front","backend","web"], answer:"dev" },
+  { keys:["cyber","cybersecurite","sisr","reseau","securite","incident","owasp"], answer:"cyber" },
+  { keys:["portfolio","github","readme","projet perso","demo"], answer:"portfolio" },
+  { keys:["stage","alternance","cv","linkedin","entreprise"], answer:"stage" },
+  { keys:["ia","intelligence artificielle","prompt","chatgpt","claude","data"], answer:"ia" },
+  { keys:["jpo","portes ouvertes","27 juin","4 juillet","18 juillet"], answer:"jpo" },
+  { keys:["linux","commande","terminal","shell","serveur"], answer:"linux" },
+  { keys:["xss","csrf","injection","securite web","authentification","mot de passe"], answer:"securite_web" }
+];
+
+// Questions du quiz: niveaux progressifs et score pondere
 const QUIZ_QUESTIONS = [
-  { q:"Quel réseau wifi est disponible sur le campus Iris Paris ?", opts:["Eduroam","Campus-WiFi","Iris-Net","Orange WiFi"], a:0, exp:"Eduroam est le réseau universitaire standard." },
-  { q:"Quel est le prix d'un repas au restaurant universitaire CROUS ?", opts:["1,50 €","3,30 €","5,00 €","7,50 €"], a:1, exp:"Le repas CROUS est à 3,30 € avec la carte étudiante." },
-  { q:"Que signifie l'acronyme BTS SIO SLAM ?", opts:["Solutions Logicielles et Applications Métiers","Systèmes et Logiciels Avancés Multimédia","Sécurité des Logiciels et Applications Mobiles","Services Logiciels et Architectures Mobiles"], a:0, exp:"SLAM = Solutions Logicielles et Applications Métiers." },
-  { q:"Quel outil de versionning est offert gratuitement aux étudiants via GitHub Student Pack ?", opts:["GitLab Premium","GitHub Pro","Bitbucket Cloud","Azure DevOps"], a:1, exp:"GitHub Pro est inclus dans le GitHub Student Developer Pack." },
-  { q:"Quelle est la signature visuelle du logo Iris Paris ?", opts:["Carré rouge","Cartouche jaune sur fond bleu marine","Triangle vert","Cercle blanc"], a:1, exp:"Le logo IRIS est une cartouche jaune sur fond bleu marine." },
-  { q:"Quel est le nom du framework CSS utility-first le plus populaire ?", opts:["Bootstrap","Foundation","Tailwind CSS","Bulma"], a:2, exp:"Tailwind CSS est le framework utility-first dominant en 2025." },
-  { q:"Quel protocole sécurise les communications HTTPS ?", opts:["HTTP/2","SSL/TLS","FTP","SSH"], a:1, exp:"HTTPS repose sur SSL/TLS pour chiffrer les échanges." },
-  { q:"À Paris, à quel âge cesse-t-on de bénéficier du tarif RATP réduit jeune ?", opts:["18 ans","21 ans","25 ans","26 ans"], a:3, exp:"Le tarif réduit RATP s'applique jusqu'à 25 ans inclus (catégorie -26 ans)." },
-  { q:"Quel est le groupe auquel appartient l'école Iris Paris ?", opts:["IONIS Education","EduGroup","MediaSchool","Galileo Global Education"], a:2, exp:"Iris Paris fait partie du groupe MediaSchool." },
-  { q:"Quel service permet d'obtenir l'APL (aide au logement) ?", opts:["CAF","CPAM","Pôle Emploi","URSSAF"], a:0, exp:"L'APL est versée par la CAF (Caisse d'Allocations Familiales)." },
+  { level:"Facile", theme:"Vie campus", pts:1, q:"Quel reseau Wi-Fi est souvent utilise dans les etablissements d'enseignement superieur ?", opts:["Eduroam","FTP-Net","Campus-Guest-Only","SMTP WiFi"], a:0, exp:"Eduroam est un reseau academique tres courant." },
+  { level:"Facile", theme:"Web", pts:1, q:"Quel langage structure le contenu d'une page web ?", opts:["CSS","HTML","SQL","Bash"], a:1, exp:"HTML decrit la structure; CSS gere le style et JS l'interaction." },
+  { level:"Facile", theme:"Git", pts:1, q:"Quelle commande Git enregistre des changements dans l'historique local ?", opts:["git save","git commit","git upload","git snapshot"], a:1, exp:"git commit cree un point d'historique local." },
+  { level:"Facile", theme:"Cyber", pts:1, q:"Quel protocole chiffre les echanges d'un site en HTTPS ?", opts:["TLS","FTP","DNS","SMTP"], a:0, exp:"HTTPS repose sur TLS pour proteger les echanges." },
+  { level:"Intermediaire", theme:"Backend", pts:2, q:"Quelle methode limite le risque d'injection SQL ?", opts:["Concatener les chaines SQL","Utiliser des requetes preparees","Cacher le formulaire","Renommer la table"], a:1, exp:"Les requetes preparees separent la requete des donnees utilisateur." },
+  { level:"Intermediaire", theme:"HTTP", pts:2, q:"Quelle difference est correcte entre 401 et 403 ?", opts:["401 = non authentifie, 403 = authentifie mais interdit","401 = erreur serveur, 403 = succes","401 = redirection, 403 = cache","Aucune difference"], a:0, exp:"401 demande une authentification; 403 refuse l'acces malgre le contexte." },
+  { level:"Intermediaire", theme:"JavaScript", pts:2, q:"Pourquoi addEventListener est souvent prefere a onclick dans le HTML ?", opts:["Il supprime le CSS","Il separe mieux JS et HTML et permet plusieurs ecouteurs","Il remplace Firebase","Il rend le site hors ligne"], a:1, exp:"addEventListener garde le code plus maintenable et composable." },
+  { level:"Intermediaire", theme:"Base de donnees", pts:2, q:"A quoi sert une cle etrangere dans une base relationnelle ?", opts:["Chiffrer une colonne","Relier deux tables avec integrite","Accelerer toujours toutes les requetes","Stocker une image"], a:1, exp:"Une cle etrangere maintient une relation valide entre tables." },
+  { level:"Intermediaire", theme:"Reseau", pts:2, q:"Dans un reseau IPv4 /24 classique, combien d'adresses sont disponibles au total ?", opts:["24","128","256","1024"], a:2, exp:"Un /24 contient 256 adresses, meme si toutes ne sont pas utilisables par des machines." },
+  { level:"Intermediaire", theme:"RGPD", pts:2, q:"Quel principe RGPD consiste a collecter seulement ce qui est necessaire ?", opts:["Minimisation des donnees","Duplication des donnees","Obfuscation marketing","Indexation globale"], a:0, exp:"La minimisation limite la collecte aux donnees vraiment utiles." },
+  { level:"Intermediaire", theme:"Frontend", pts:2, q:"Quelle protection reduit le risque XSS quand on affiche une saisie utilisateur ?", opts:["Afficher avec innerHTML sans controle","Echapper le texte avant affichage","Desactiver HTTPS","Changer la couleur du bouton"], a:1, exp:"Echapper le texte empeche l'interpretation de HTML ou scripts injectes." },
+  { level:"Intermediaire", theme:"API", pts:2, q:"Quel format est le plus courant pour echanger des donnees avec une API web moderne ?", opts:["JSON","BMP","MP3","EXE"], a:0, exp:"JSON est leger, lisible et tres utilise par les API web." },
+  { level:"Avance", theme:"Securite web", pts:3, q:"A quoi sert principalement un token CSRF ?", opts:["Compresser les images","Verifier qu'une action vient bien de la session legitime","Remplacer le mot de passe","Lancer un cron"], a:1, exp:"Un token CSRF protege contre les actions forcees depuis un autre site." },
+  { level:"Avance", theme:"Auth", pts:3, q:"Quel est un risque important si un JWT sensible est stocke dans localStorage ?", opts:["Il peut etre lu par un script injecte via XSS","Il expire instantanement","Il bloque CSS","Il supprime les cookies"], a:0, exp:"En cas de XSS, localStorage est accessible au script malveillant." },
+  { level:"Avance", theme:"Architecture", pts:3, q:"Que garantit l'isolation dans les proprietes ACID d'une transaction ?", opts:["Les transactions concurrentes ne se perturbent pas de maniere incoherente","Les donnees sont toujours compressees","Le serveur repond en moins de 1 ms","Le HTML est valide"], a:0, exp:"L'isolation evite les effets incoherents entre transactions simultanees." },
+  { level:"Avance", theme:"Algorithmique", pts:3, q:"Quelle complexite correspond a deux boucles imbriquees parcourant chacune n elements ?", opts:["O(1)","O(log n)","O(n)","O(n^2)"], a:3, exp:"Deux parcours imbriques donnent generalement une complexite quadratique." },
+  { level:"Avance", theme:"Navigateur", pts:3, q:"Dans quel cas un preflight CORS est souvent declenche ?", opts:["Requete simple GET sans header custom","Requete avec methode ou header non simple","Chargement d'une image locale","Lecture d'un fichier CSS"], a:1, exp:"Le navigateur envoie OPTIONS avant certaines requetes cross-origin non simples." },
+  { level:"Avance", theme:"Firebase", pts:3, q:"Quelle regle Realtime Database est dangereuse en production ?", opts:["Lecture/ecriture limitee aux utilisateurs autorises","Validation des champs","read/write a true pour tout le monde","Chemins separes par promo"], a:2, exp:"read/write a true expose la base publiquement." },
+  { level:"Avance", theme:"DevOps", pts:3, q:"Quel est l'interet principal d'une variable d'environnement pour une cle API ?", opts:["Eviter de mettre le secret directement dans le code","Rendre le site plus colore","Changer la police","Supprimer Git"], a:0, exp:"Les secrets ne doivent pas etre commits dans le code source." },
+  { level:"Avance", theme:"UX", pts:3, q:"Pour un site responsive, quelle approche evite le mieux les debordements sur mobile ?", opts:["Largeurs fixes partout","Grilles flexibles, media queries et contraintes max-width","Texte en image","Zoom bloque"], a:1, exp:"Un layout fluide avec contraintes et media queries s'adapte mieux aux ecrans." }
 ];
 
 // ══════════════════════════════════════════
@@ -677,7 +829,8 @@ const DB = {
 let currentUser   = null;   // Utilisateur connecté
 let activePromo   = null;   // Salle de chat active
 let fbUnsubscribe = null;   // Interval de polling localStorage
-let presenceUnsubscribe = null; // Présence temps réel / fallback local
+let presenceUnsubscribe = null; // Presence temps reel / fallback local
+let chatFallbackNotified = false;
 let quizState     = { idx:0, score:0, answered:false }; // État du quiz
 
 // ══════════════════════════════════════════
@@ -694,6 +847,8 @@ const li = setInterval(() => {
   lfEl.style.width = lpct + '%';
   lpEl.textContent = Math.floor(lpct) + '%';
 }, 65);
+
+
 
 // ══════════════════════════════════════════
 // 5. NAVIGATION & SCROLL
@@ -835,10 +990,7 @@ function pwToggle(id, btn) {
 
 // ── Google OAuth (popup réelle via google.accounts.oauth2) ──
 function googleAuth() {
-  if (!CFG.GOOGLE_CLIENT_ID || CFG.GOOGLE_CLIENT_ID.includes('VOTRE') || CFG.GOOGLE_CLIENT_ID.includes('TON_ID')) {
-    toast('Configure GOOGLE_CLIENT_ID dans CFG pour activer Google.');
-    return;
-  }
+  if (CFG.GOOGLE_CLIENT_ID.includes('VOTRE')) { toast('⚙️ Configure GOOGLE_CLIENT_ID dans CFG.'); return; }
   if (!window.google) { toast('⏳ Chargement de Google…'); return; }
   google.accounts.oauth2.initTokenClient({
     client_id: CFG.GOOGLE_CLIENT_ID,
@@ -867,11 +1019,7 @@ function getMSAL() {
   return msalInst;
 }
 async function msftAuth() {
-  if (!CFG.MSFT_CLIENT_ID || CFG.MSFT_CLIENT_ID.includes('VOTRE') || CFG.MSFT_CLIENT_ID.includes('XXXX')) {
-    toast('Configure MSFT_CLIENT_ID dans CFG pour activer Microsoft.');
-    return;
-  }
-  if (!window.msal) { toast('Chargement de Microsoft MSAL...'); return; }
+  if (CFG.MSFT_CLIENT_ID.includes('VOTRE')) { toast('⚙️ Configure MSFT_CLIENT_ID dans CFG.'); return; }
   try {
     const resp = await getMSAL().loginPopup({ scopes:['User.Read'] });
     handleSocialLogin({ email:resp.account.username, first:resp.account.name?.split(' ')[0]||'Étudiant',
@@ -1008,8 +1156,8 @@ function openDash(user) {
 
 // Déconnexion
 function doLogout() {
-  stopPresence();
   currentUser = null; DB.session = null;
+  stopPresence();
   if (typeof fbUnsubscribe === 'function') fbUnsubscribe();
   else if (fbUnsubscribe) clearInterval(fbUnsubscribe);
   fbUnsubscribe = null;
@@ -1135,9 +1283,24 @@ function enterChat(promoId, user) {
   startPresence(promoId, user);
   // Choisir Firebase (temps réel) ou localStorage (fallback)
   if (window._fbReady) {
-    fbUnsubscribe = window._fbListen(promoId, msgs => renderMsgs(msgs));
+    fbUnsubscribe = window._fbListen(promoId, (msgs, err) => {
+      if (err) { switchChatToLocal(promoId, user); return; }
+      renderMsgs(msgs);
+    });
   } else {
     listenLocal(promoId);
+  }
+}
+
+function switchChatToLocal(promoId, user) {
+  if (typeof fbUnsubscribe === 'function') fbUnsubscribe();
+  fbUnsubscribe = null;
+  stopPresence();
+  startLocalPresence(promoId, user);
+  listenLocal(promoId);
+  if (!chatFallbackNotified) {
+    toast('Firebase ne répond pas : chat en mode local sur ce navigateur.');
+    chatFallbackNotified = true;
   }
 }
 
@@ -1158,7 +1321,10 @@ function stopPresence() {
 
 function startPresence(promoId, user) {
   if (window._fbReady && window._fbPresence) {
-    presenceUnsubscribe = window._fbPresence(promoId, user, setOnlineCount);
+    presenceUnsubscribe = window._fbPresence(promoId, user, (count, err) => {
+      if (err) { switchChatToLocal(promoId, user); return; }
+      setOnlineCount(count);
+    });
     return;
   }
   startLocalPresence(promoId, user);
@@ -1257,7 +1423,12 @@ function sendChatMsg() {
   const msg = { email:currentUser.email, name:currentUser.first+(currentUser.last?' '+currentUser.last:''),
     avatar:currentUser.avatar||DEFAULT_AVATARS[0], text, ts:Date.now() };
   if (window._fbReady) {
-    window._fbPush(activePromo, msg).catch(() => { saveLocalMsg(activePromo, msg); renderMsgs(getLocalMsgs(activePromo)); });
+    window._fbPush(activePromo, msg).catch(() => {
+      switchChatToLocal(activePromo, currentUser);
+      msg.id = 'local_' + Date.now();
+      saveLocalMsg(activePromo, msg);
+      renderMsgs(getLocalMsgs(activePromo));
+    });
   } else {
     // Ajouter un id local pour les réactions
     msg.id = 'local_' + Date.now();
@@ -1299,10 +1470,21 @@ function initAI() {
   const el = document.getElementById('aiMsgs');
   el.innerHTML = `<div class="ai-msg iris"><div class="aim-av bot">AI</div>
     <div class="aim-bub">Bonjour ! 👋 Je suis <strong>Iris AI</strong>.<br>
-    Pose-moi n'importe quelle question sur la vie étudiante à Iris !</div></div>`;
+    Je peux t'aider sur la vie campus, le développement, la cybersécurité, l'IA, le portfolio, le stage et l'alternance.</div></div>`;
 }
 
 function askAI(q) { document.getElementById('aiInp').value = q; sendAI(); }
+
+function matchAIAnswer(question) {
+  const ql = question.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  let best = null;
+  for (const topic of AI_TOPICS) {
+    const score = topic.keys.reduce((n, key) => n + (ql.includes(key) ? 1 : 0), 0);
+    if (score && (!best || score > best.score)) best = { score, answer:topic.answer };
+  }
+  if (best) return AI_KB[best.answer];
+  return "Je peux t'aider sur la revision, l'alternance, le portfolio GitHub, le developpement SLAM, la cyber/SISR, Linux, la securite web, l'IA responsable, Firebase, NetYpareo et la vie campus. Pose une question concrete et je te donne une reponse courte avec des actions.";
+}
 
 async function sendAI() {
   const inp = document.getElementById('aiInp');
@@ -1323,7 +1505,7 @@ async function sendAI() {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body:JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:350,
-        system:"Tu es Iris AI, l'assistant de la plateforme étudiante Iris Paris (informatique, numérique). Réponds en français, en 2-4 phrases, ton décontracté et professionnel. Aide sur ENT, associations, logement, transport, bons plans, événements.",
+        system:"Tu es Iris AI, l'assistant de la plateforme étudiante Iris Paris. Réponds en français, en 2-4 phrases, ton clair et professionnel. Aide surtout les élèves en informatique: BTS SIO SLAM/SISR, développement web, cybersécurité, IA/data, alternance, stage, portfolio GitHub, debug, RGPD, sécurité web, ENT et événements campus. Donne des actions concrètes, ne prétends pas avoir une source récente si elle n'est pas fournie.",
         messages:[{role:'user',content:q}] }),
     });
     if (res.ok) { const d=await res.json(); answer=d.content?.[0]?.text||''; }
@@ -1331,16 +1513,7 @@ async function sendAI() {
   // Fallback sur la base de connaissances locale
   if (!answer) {
     await new Promise(r=>setTimeout(r,900));
-    const ql = q.toLowerCase();
-    if (ql.includes('ent')||ql.includes('portail'))           answer = AI_KB.ent;
-    else if (ql.includes('transport')||ql.includes('métro'))  answer = AI_KB.transport;
-    else if (ql.includes('hackathon'))                        answer = AI_KB.hackathon;
-    else if (ql.includes('association')||ql.includes('bde'))  answer = AI_KB.association;
-    else if (ql.includes('manger')||ql.includes('cantine'))   answer = AI_KB.manger;
-    else if (ql.includes('certificat'))                       answer = AI_KB.certificat;
-    else if (ql.includes('wifi')||ql.includes('internet'))    answer = AI_KB.wifi;
-    else if (ql.includes('logement')||ql.includes('coloc'))   answer = AI_KB.logement;
-    else answer = "Je n'ai pas d'info précise sur ce sujet. Contacte l'administration via le formulaire ou passe au bureau B204. 😊";
+    answer = matchAIAnswer(q);
   }
   document.getElementById(tid)?.remove();
   el.innerHTML += `<div class="ai-msg iris"><div class="aim-av bot">AI</div>
@@ -1366,45 +1539,53 @@ function joinEv(btn) {
 // 16. QUIZ ÉTUDIANT
 // ══════════════════════════════════════════
 function initQuiz() {
-  quizState = { idx:0, score:0, answered:false };
+  quizState = {
+    idx:0,
+    score:0,
+    maxScore:QUIZ_QUESTIONS.reduce((sum, q) => sum + (q.pts || 1), 0),
+    answered:false
+  };
   showQuestion();
 }
 
 function showQuestion() {
   const q = QUIZ_QUESTIONS[quizState.idx];
-  document.getElementById('qzQ').textContent = q.q;
-  document.getElementById('qzScore').textContent = `${quizState.score} / ${quizState.idx}`;
+  document.getElementById('qzQ').innerHTML =
+    `<div class="quiz-meta"><span class="qz-difficulty">${esc(q.level)}</span><span>${esc(q.theme)}</span><span>${q.pts || 1} pts</span></div>${esc(q.q)}`;
+  document.getElementById('qzScore').textContent = `${quizState.score} / ${quizState.maxScore}`;
   document.getElementById('qzBar').style.width = ((quizState.idx / QUIZ_QUESTIONS.length)*100) + '%';
   document.getElementById('qzInfo').textContent = `Question ${quizState.idx+1} / ${QUIZ_QUESTIONS.length}`;
   document.getElementById('qzNext').style.display = 'none';
   quizState.answered = false;
-  // Générer les boutons de réponse
   const optsEl = document.getElementById('qzOpts');
   optsEl.innerHTML = q.opts.map((opt,i) =>
-    `<button class="qopt" onclick="answerQuiz(${i})">${opt}</button>`
+    `<button class="qopt" onclick="answerQuiz(${i})">${esc(opt)}</button>`
   ).join('');
 }
 
 function answerQuiz(chosen) {
   if (quizState.answered) return;
   quizState.answered = true;
-  const q    = QUIZ_QUESTIONS[quizState.idx];
+  const q = QUIZ_QUESTIONS[quizState.idx];
+  const points = q.pts || 1;
+  const correct = chosen === q.a;
   const btns = document.querySelectorAll('.qopt');
-  // Colorier les boutons (vert = bonne réponse, rouge = mauvaise)
   btns.forEach((btn, i) => {
     if (i === q.a) btn.classList.add('correct');
-    else if (i === chosen && chosen !== q.a) btn.classList.add('wrong');
+    else if (i === chosen && !correct) btn.classList.add('wrong');
     btn.disabled = true;
   });
-  if (chosen === q.a) quizState.score++;
-  document.getElementById('qzInfo').textContent = `${q.exp} • Score : ${quizState.score} / ${quizState.idx+1}`;
-  document.getElementById('qzScore').textContent = `${quizState.score} / ${quizState.idx+1}`;
-  // Afficher "Suivant" ou message de fin
+  if (correct) quizState.score += points;
+  document.getElementById('qzInfo').textContent =
+    `${q.exp} ${correct ? `+${points} pts` : '0 pt'} - Score : ${quizState.score} / ${quizState.maxScore}`;
+  document.getElementById('qzScore').textContent = `${quizState.score} / ${quizState.maxScore}`;
   if (quizState.idx < QUIZ_QUESTIONS.length-1) {
     document.getElementById('qzNext').style.display = 'inline-flex';
   } else {
+    const percent = Math.round((quizState.score / quizState.maxScore) * 100);
+    const verdict = percent >= 85 ? 'Excellent, niveau solide.' : percent >= 60 ? 'Bien joue, continue a muscler les questions avancees.' : 'A reviser: refais le quiz en notant les themes faibles.';
     document.getElementById('qzInfo').textContent +=
-      ` | Score final : ${quizState.score}/${QUIZ_QUESTIONS.length} ${quizState.score>=8?'🏆 Excellent !':quizState.score>=5?'👍 Bien joué !':'💪 À réviser !'}`;
+      ` | Score final : ${quizState.score}/${quizState.maxScore} (${percent}%) - ${verdict}`;
     document.getElementById('qzBar').style.width = '100%';
   }
 }
@@ -1450,9 +1631,16 @@ async function initWeather() {
 // 18. COMPTE À REBOURS (prochain événement)
 // ══════════════════════════════════════════
 function initCountdown() {
-  // Prochain événement : soirée d'intégration BTS SIO le 12 mai
-  const target = new Date(new Date().getFullYear(), 4, 12, 19, 0, 0); // mois = 4 (mai = index 4)
-  if (target < new Date()) target.setFullYear(target.getFullYear()+1); // reporter à l'année suivante si passé
+  // Prochain événement officiel IRIS Paris publié sur ecoleiris.fr/evenements
+  const officialDates = [
+    { label:'JPO IRIS Paris - 27 juin 2026', date:new Date(2026, 5, 27, 10, 0, 0) },
+    { label:'JPO IRIS Paris - 4 juillet 2026', date:new Date(2026, 6, 4, 10, 0, 0) },
+    { label:'JPO IRIS Paris - 18 juillet 2026', date:new Date(2026, 6, 18, 10, 0, 0) },
+  ];
+  const nextEvent = officialDates.find(e => e.date > new Date()) || officialDates[officialDates.length - 1];
+  const target = nextEvent.date;
+  const labelEl = document.getElementById('cwEventName');
+  if (labelEl) labelEl.textContent = nextEvent.label;
   function tick() {
     const diff = target - new Date();
     if (diff <= 0) { document.getElementById('cwD').textContent = '00'; return; }
