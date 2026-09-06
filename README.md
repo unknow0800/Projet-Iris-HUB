@@ -277,7 +277,7 @@ Ce projet constitue un livrable complet pour le BTS SIO SLAM :
 | Dowe Marc | Chef de projet |
 
 **Promotion :** BTS SIO SLAM — Iris Paris  
-**Année scolaire :** 2024–2025
+**Année scolaire :** 2025–2026
 
 ---
 
